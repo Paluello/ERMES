@@ -32,36 +32,23 @@ fi
 GITHUB_REPO="${GITHUB_REPO:-Paluello/ERMES}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-main}"
 
-# Usa il container ermes-backend che ha già git installato
-# Oppure usa un container Alpine standard con git installato al volo
+# Usa container Alpine temporaneo con git installato al volo
 echo -e "${YELLOW}Eseguo git pull tramite container Docker...${NC}"
 
-# Verifica se il container ermes-backend esiste e è in esecuzione
-if sudo docker ps --format '{{.Names}}' | grep -q "^ermes-backend$"; then
-    echo -e "${YELLOW}Uso container ermes-backend esistente...${NC}"
-    if [ -n "$GITHUB_TOKEN" ]; then
-        sudo docker exec ermes-backend sh -c "cd /volume1/docker/ERMES && git config --global --add safe.directory /volume1/docker/ERMES && git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPO}.git && git fetch origin && git reset --hard origin/${GITHUB_BRANCH}"
-    else
-        sudo docker exec ermes-backend sh -c "cd /volume1/docker/ERMES && git config --global --add safe.directory /volume1/docker/ERMES && git fetch origin && git reset --hard origin/${GITHUB_BRANCH}"
-    fi
+if [ -n "$GITHUB_TOKEN" ]; then
+    sudo docker run --rm \
+        -v "$PROJECT_DIR:/workspace" \
+        -w /workspace \
+        -e GITHUB_TOKEN="$GITHUB_TOKEN" \
+        -e GITHUB_REPO="$GITHUB_REPO" \
+        alpine:latest \
+        sh -c "apk add --no-cache git > /dev/null 2>&1 && git config --global --add safe.directory /workspace && git remote set-url origin https://x-access-token:\${GITHUB_TOKEN}@github.com/\${GITHUB_REPO}.git && git fetch origin && git reset --hard origin/${GITHUB_BRANCH}"
 else
-    # Se il container non esiste, usa Alpine standard con git
-    echo -e "${YELLOW}Uso container Alpine temporaneo...${NC}"
-    if [ -n "$GITHUB_TOKEN" ]; then
-        sudo docker run --rm \
-            -v "$PROJECT_DIR:/workspace" \
-            -w /workspace \
-            -e GITHUB_TOKEN="$GITHUB_TOKEN" \
-            -e GITHUB_REPO="$GITHUB_REPO" \
-            alpine:latest \
-            sh -c "apk add --no-cache git > /dev/null 2>&1 && git config --global --add safe.directory /workspace && git remote set-url origin https://x-access-token:\${GITHUB_TOKEN}@github.com/\${GITHUB_REPO}.git && git fetch origin && git reset --hard origin/${GITHUB_BRANCH}"
-    else
-        sudo docker run --rm \
-            -v "$PROJECT_DIR:/workspace" \
-            -w /workspace \
-            alpine:latest \
-            sh -c "apk add --no-cache git > /dev/null 2>&1 && git config --global --add safe.directory /workspace && git fetch origin && git reset --hard origin/${GITHUB_BRANCH}"
-    fi
+    sudo docker run --rm \
+        -v "$PROJECT_DIR:/workspace" \
+        -w /workspace \
+        alpine:latest \
+        sh -c "apk add --no-cache git > /dev/null 2>&1 && git config --global --add safe.directory /workspace && git fetch origin && git reset --hard origin/${GITHUB_BRANCH}"
 fi
 
 if [ $? -eq 0 ]; then
