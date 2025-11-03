@@ -87,9 +87,10 @@ class MobilePhoneSource(VideoSource):
     
     def is_available(self) -> bool:
         """Verifica disponibilità telefono"""
+        # Una sorgente mobile è disponibile se è connessa e ha un video_url configurato
+        # La telemetria può arrivare dopo, quindi non è un requisito obbligatorio
         return (
             self.is_connected and 
-            self.video_url is not None and 
-            self.latest_telemetry_data is not None
+            self.video_url is not None
         )
 

@@ -67,8 +67,17 @@ class SourceManager:
         video_url: str
     ) -> bool:
         """Registra un nuovo telefono mobile"""
+        # Se la sorgente esiste già, aggiorna invece di restituire False
         if source_id in self.sources:
-            return False
+            existing_source = self.sources[source_id]
+            if isinstance(existing_source, MobilePhoneSource):
+                # Aggiorna URL video e riconnetti
+                existing_source.set_video_url(video_url)
+                existing_source.connect()
+                return True
+            else:
+                # Tipo diverso, non possiamo aggiornare
+                return False
         
         source = MobilePhoneSource(source_id)
         source.set_video_url(video_url)

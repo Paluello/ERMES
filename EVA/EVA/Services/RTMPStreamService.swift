@@ -20,6 +20,7 @@ class RTMPStreamService: ObservableObject {
     private var rtmpStream: RTMPStream?
     private var rtmpConnection: RTMPConnection?
     private var streamName: String = ""
+    private var appName: String = ""
     
     func configure(url: String, config: StreamConfig) async throws {
         self.streamURL = url
@@ -39,21 +40,22 @@ class RTMPStreamService: ObservableObject {
             return
         }
         
-        let appName = pathComponents[0]
+        appName = pathComponents[0]
         streamName = pathComponents[1]
         
         // Crea connessione RTMP
         rtmpConnection = RTMPConnection()
         rtmpStream = RTMPStream(connection: rtmpConnection!)
         
-        // TODO: Configurare videoSettings e audioSettings secondo l'API di HaishinKit
-        // L'API esatta dipende dalla versione di HaishinKit installata
-        // Potrebbe essere necessario usare VideoCodecSettings() e AudioCodecSettings()
-        // oppure configurare tramite altre proprietà di RTMPStream
-        // Consulta la documentazione di HaishinKit per la versione installata
-        
-        // Connetti al server RTMP (async)
-        _ = try await rtmpConnection?.connect("\(host):\(port)/\(appName)")
+        // Connetti al server RTMP
+        // Costruisci URL base per la connessione (host:port/app)
+        let connectionURL = "rtmp://\(host):\(port)/\(appName)"
+        // Il metodo connect può lanciare errori ed è isolato a un actor
+        // Il metodo richiede URL e arguments come parametri separati
+        guard let connection = rtmpConnection else {
+            throw NSError(domain: "RTMPStreamService", code: -1, userInfo: [NSLocalizedDescriptionKey: "Connessione RTMP non inizializzata"])
+        }
+        _ = try await connection.connect(connectionURL, arguments: nil)
         
         // Monitora lo stato della connessione tramite delegate o property observer
         // Nota: L'API moderna potrebbe usare un approccio diverso per gli eventi
@@ -65,7 +67,10 @@ class RTMPStreamService: ObservableObject {
             return
         }
         
-        // Pubblica stream (async)
+        // Pubblica stream con il nome dello stream
+        // L'app name dovrebbe essere già configurata nella connessione
+        // Il metodo publish può lanciare errori ed è isolato a un actor
+        // Chiama nel contesto corretto dell'actor
         _ = try await rtmpStream.publish(streamName)
         
         await MainActor.run {

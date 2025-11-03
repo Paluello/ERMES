@@ -152,11 +152,41 @@ class StreamManager: ObservableObject {
                 osVersion: UIDevice.osVersionString
             )
             
-            let response = try await apiClient.registerSource(
-                sourceId: sourceId,
-                deviceInfo: deviceInfo,
-                rtmpUrl: rtmpURL
-            )
+            var response: SourceRegistrationResponse
+            
+            // Prova a registrare la sorgente
+            do {
+                response = try await apiClient.registerSource(
+                    sourceId: sourceId,
+                    deviceInfo: deviceInfo,
+                    rtmpUrl: rtmpURL
+                )
+            } catch let error as APIError {
+                // Se la sorgente è già registrata (409), disconnetti e riprova
+                if case .httpError(let statusCode) = error, statusCode == 409 {
+                    print("⚠️ Sorgente già registrata. Disconnessione e nuovo tentativo...")
+                    do {
+                        // Prova a disconnettere la sorgente esistente
+                        try await apiClient.disconnectSource(sourceId: sourceId)
+                        // Attendi un momento prima di riprovare
+                        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 secondi
+                        // Riprova la registrazione
+                        response = try await apiClient.registerSource(
+                            sourceId: sourceId,
+                            deviceInfo: deviceInfo,
+                            rtmpUrl: rtmpURL
+                        )
+                        print("✅ Sorgente riconnessa con successo")
+                    } catch {
+                        // Se anche la disconnessione fallisce, rilancia l'errore originale
+                        print("⚠️ Impossibile disconnettere sorgente esistente: \(error)")
+                        throw error
+                    }
+                } else {
+                    // Per altri errori, rilancia direttamente
+                    throw error
+                }
+            }
             
             if response.success {
                 // Configura RTMP stream (async)
@@ -174,6 +204,17 @@ class StreamManager: ObservableObject {
                 isStreaming = true
             } else {
                 print("Errore registrazione: \(response.message ?? "unknown")")
+            }
+        } catch let error as APIError {
+            print("Errore avvio streaming: \(error)")
+            // Gestisci errori API specifici
+            switch error {
+            case .httpError(let statusCode):
+                print("⚠️ Errore HTTP \(statusCode)")
+            case .invalidResponse:
+                print("⚠️ Risposta non valida dal backend")
+            case .encodingError, .decodingError:
+                print("⚠️ Errore di codifica/decodifica dati")
             }
         } catch {
             print("Errore avvio streaming: \(error)")
