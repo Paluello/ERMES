@@ -1,3 +1,56 @@
+# Fix Immediato Errore WebSocket sul NAS
+
+## Problema
+L'errore `AttributeError: 'WebSocket' object has no attribute 'websocket_endpoint'` continua perché il file `main.py` sul NAS non è aggiornato.
+
+## Soluzione Rapida
+
+### Opzione 1: Fix Manuale Diretto (Più Veloce)
+
+Esegui questi comandi **direttamente sul NAS**:
+
+```bash
+# 1. Entra nella directory
+cd /volume1/docker/ERMES
+
+# 2. Modifica il file main.py
+nano backend/app/main.py
+```
+
+Cerca la riga **6-7** (dove ci sono gli import):
+```python
+from app.api import routes, websocket
+```
+
+**Cambiala in:**
+```python
+from app.api import routes
+from app.api import websocket as websocket_module
+```
+
+Poi cerca la riga **80** (dove c'è la funzione websocket_route):
+```python
+    await websocket.websocket_endpoint(websocket)
+```
+
+**Cambiala in:**
+```python
+    await websocket_module.websocket_endpoint(websocket)
+```
+
+Salva il file (Ctrl+O, Enter, Ctrl+X) e riavvia:
+```bash
+docker compose -f docker-compose.github.nas.yml restart ermes-backend
+```
+
+### Opzione 2: Fix Tramite Container
+
+Esegui questo comando **sul NAS**:
+
+```bash
+# Crea il file corretto dentro il container
+docker exec -i ermes-backend bash << 'EOF'
+cat > /volume1/docker/ERMES/backend/app/main.py << 'MAIN_EOF'
 """FastAPI application entry point"""
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
@@ -93,4 +146,47 @@ async def root():
         "docs": "/docs",
         "dashboard": "Dashboard non disponibile"
     }
+MAIN_EOF
+EOF
+
+# Riavvia il backend
+docker compose -f docker-compose.github.nas.yml restart ermes-backend
+```
+
+### Opzione 3: Verifica e Fix Automatico
+
+Esegui questo per verificare e fixare automaticamente:
+
+```bash
+# Verifica il contenuto attuale
+docker exec ermes-backend cat /volume1/docker/ERMES/backend/app/main.py | grep -A 2 "websocket"
+
+# Se vedi ancora "websocket.websocket_endpoint", allora esegui l'Opzione 2
+```
+
+## Verifica Fix
+
+Dopo aver applicato il fix, verifica che funzioni:
+
+```bash
+# Controlla i log - non dovresti più vedere l'errore WebSocket
+docker logs ermes-backend | tail -20
+
+# Prova a connetterti via WebSocket (se hai un client)
+# L'errore non dovrebbe più apparire
+```
+
+## Perché Succede?
+
+Il problema è che:
+1. Il volume `./backend/app:/app/backend/app:ro` monta la directory locale sul NAS
+2. Se quella directory non contiene i file aggiornati, il container vedrà sempre il codice vecchio
+3. Lo script di aggiornamento dovrebbe copiare i file nella directory montata, ma potrebbe non funzionare se la directory non è un repository git inizializzato
+
+## Prevenzione Futura
+
+Dopo aver fixato manualmente, assicurati che:
+1. La directory `/volume1/docker/ERMES` sia un repository git inizializzato
+2. Lo script di aggiornamento possa fare `git pull` correttamente
+3. I file vengano sempre copiati nella directory montata durante gli aggiornamenti
 

@@ -59,6 +59,12 @@ class Settings(BaseSettings):
     github_webhook_secret: Optional[str] = None
     github_webhook_enabled: bool = False
     
+    # Auto-update con polling (alternativa al webhook)
+    github_auto_update_enabled: bool = False  # Abilita polling automatico
+    github_auto_update_interval_minutes: int = 5  # Intervallo polling (minuti)
+    github_repo: Optional[str] = None  # Es: "Paluello/ERMES"
+    github_branch: str = "main"  # Branch da monitorare
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

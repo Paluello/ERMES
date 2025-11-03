@@ -21,9 +21,38 @@ def get_source_manager() -> SourceManager:
 @router.get("/status")
 async def get_status():
     """Ottieni stato sistema"""
+    # Prova a ottenere il commit Git corrente
+    git_commit = None
+    git_branch = None
+    try:
+        # Verifica se siamo in una repo git
+        repo_path = os.getenv("GITHUB_REPO_PATH", "/volume1/docker/ERMES")
+        if os.path.exists(os.path.join(repo_path, ".git")):
+            result = subprocess.run(
+                ["git", "-C", repo_path, "rev-parse", "HEAD"],
+                capture_output=True,
+                text=True,
+                timeout=2
+            )
+            if result.returncode == 0:
+                git_commit = result.stdout.strip()[:7]  # Primi 7 caratteri
+            
+            result_branch = subprocess.run(
+                ["git", "-C", repo_path, "rev-parse", "--abbrev-ref", "HEAD"],
+                capture_output=True,
+                text=True,
+                timeout=2
+            )
+            if result_branch.returncode == 0:
+                git_branch = result_branch.stdout.strip()
+    except Exception:
+        pass  # Ignora errori git
+    
     return {
         "status": "running",
         "version": "0.1.0",
+        "git_commit": git_commit,
+        "git_branch": git_branch,
         "gps_precision": settings.gps_precision.value,
         "max_tracked_objects": settings.max_tracked_objects
     }
@@ -233,6 +262,126 @@ async def get_update_status():
             "status": "error",
             "message": f"Errore lettura log: {str(e)}"
         }
+
+
+@router.get("/update/polling/status")
+async def get_polling_status():
+    """
+    Ottieni lo stato del polling automatico (se abilitato).
+    """
+    from app.globals import get_auto_updater
+    
+    auto_updater = get_auto_updater()
+    
+    if not auto_updater:
+        return {
+            "enabled": False,
+            "message": "Polling automatico non abilitato. Configura GITHUB_AUTO_UPDATE_ENABLED=true nel .env"
+        }
+    
+    return {
+        "enabled": True,
+        "is_running": auto_updater.is_running,
+        "repository": auto_updater.github_repo,
+        "branch": auto_updater.github_branch,
+        "poll_interval_minutes": auto_updater.poll_interval_seconds // 60,
+        "last_commit_sha": auto_updater.last_commit_sha[:7] if auto_updater.last_commit_sha else None
+    }
+
+
+@router.post("/update/polling/check")
+async def force_polling_check():
+    """
+    Forza un controllo immediato per nuovi commit (utile per test).
+    """
+    from app.globals import get_auto_updater
+    
+    auto_updater = get_auto_updater()
+    
+    if not auto_updater:
+        raise HTTPException(
+            status_code=400,
+            detail="Polling automatico non abilitato"
+        )
+    
+    try:
+        updated = await auto_updater.force_check()
+        return {
+            "success": True,
+            "updated": updated,
+            "message": "Aggiornamento avviato" if updated else "Nessun nuovo commit trovato",
+            "last_commit_sha": auto_updater.last_commit_sha[:7] if auto_updater.last_commit_sha else None
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Errore durante controllo: {str(e)}"
+        )
+
+
+@router.post("/rtmp/on_publish")
+async def rtmp_on_publish(request: Request):
+    """
+    Callback chiamato da nginx-rtmp quando uno stream inizia la pubblicazione.
+    Questo endpoint viene chiamato automaticamente da nginx quando riceve un nuovo stream RTMP.
+    """
+    try:
+        # nginx-rtmp invia i parametri come form data
+        form_data = await request.form()
+        
+        # Estrai parametri comuni da nginx-rtmp
+        app = form_data.get("app", "unknown")
+        name = form_data.get("name", "unknown")  # Questo è il source_id
+        addr = form_data.get("addr", "unknown")
+        
+        # Il name dovrebbe essere il source_id (es. "90BCE65A-589D-4C87-8420-ABF974A86E85")
+        source_id = name
+        
+        print(f"📹 RTMP PUBLISH START: source_id={source_id}, app={app}, addr={addr}")
+        
+        # Verifica se la sorgente è registrata
+        source = source_manager.get_source(source_id)
+        if source:
+            print(f"✅ Sorgente {source_id} trovata nel manager")
+        else:
+            print(f"⚠️ Sorgente {source_id} NON trovata nel manager - potrebbe essere una connessione orfana")
+        
+        # Ritorna 200 OK per accettare la connessione
+        # nginx-rtmp si aspetta un codice HTTP 2xx per permettere lo stream
+        return {"status": "accepted", "source_id": source_id}
+        
+    except Exception as e:
+        print(f"❌ Errore in on_publish: {e}")
+        # Ritorna comunque 200 per non bloccare lo stream
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/rtmp/on_publish_done")
+async def rtmp_on_publish_done(request: Request):
+    """
+    Callback chiamato da nginx-rtmp quando uno stream termina la pubblicazione.
+    Questo endpoint viene chiamato automaticamente quando uno stream RTMP si disconnette.
+    """
+    try:
+        form_data = await request.form()
+        
+        app = form_data.get("app", "unknown")
+        name = form_data.get("name", "unknown")  # source_id
+        addr = form_data.get("addr", "unknown")
+        duration = form_data.get("duration", "0")  # Durata in secondi
+        
+        source_id = name
+        
+        print(f"📹 RTMP PUBLISH DONE: source_id={source_id}, app={app}, addr={addr}, duration={duration}s")
+        
+        # Qui potresti voler pulire risorse o notificare il source manager
+        # Per ora solo logging
+        
+        return {"status": "processed", "source_id": source_id}
+        
+    except Exception as e:
+        print(f"❌ Errore in on_publish_done: {e}")
+        return {"status": "error", "message": str(e)}
 
 
 @router.post("/webhook/github")

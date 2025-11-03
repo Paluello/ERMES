@@ -35,8 +35,10 @@ class StreamManager: ObservableObject {
         telemetryService = TelemetryService(apiClient: apiClient)
         
         // Setup video capture callback
+        // Invia frame a RTMP solo quando lo streaming è attivo
         videoCapture.onFrameCaptured = { [weak self] sampleBuffer in
-            self?.rtmpStream.appendVideoSampleBuffer(sampleBuffer)
+            guard let self = self, self.isStreaming else { return }
+            self.rtmpStream.appendVideoSampleBuffer(sampleBuffer)
         }
         
         // Configura e avvia la camera immediatamente per la preview
@@ -240,13 +242,17 @@ class StreamManager: ObservableObject {
     func stopStreaming() async {
         guard isStreaming else { return }
         
+        // Ferma solo lo streaming RTMP e la telemetria
+        // NON fermare la camera per mantenere la preview attiva
         do {
             try await rtmpStream.stop()
         } catch {
             print("Errore stop streaming: \(error)")
         }
         
-        videoCapture.stop()
+        // NON chiamare videoCapture.stop() - manteniamo la camera attiva per la preview
+        // videoCapture.stop() // RIMOSSO: manteniamo la camera attiva
+        
         telemetryService.stop()
         
         isStreaming = false

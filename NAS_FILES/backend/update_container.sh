@@ -53,75 +53,117 @@ cd "$COMPOSE_DIR" || {
 if [ -d "/app/backend/app" ]; then
     log "Codice Python montato come volume - aggiornamento veloce possibile!"
     
-    # Prova ad aggiornare il codice nella directory montata sul NAS
+    # Aggiorna il codice nella directory montata sul NAS
     # La directory montata è /volume1/docker/ERMES/backend/app -> /app/backend/app
-    BACKEND_DIR="/volume1/docker/ERMES/backend"
     
-    # Prova ad aggiornare il codice: prima controlla se è un repository git
+    log "📥 Aggiorno codice da GitHub..."
+    
+    # Leggi configurazione GitHub
+    GITHUB_REPO="${GITHUB_REPO:-Paluello/ERMES}"
+    GITHUB_BRANCH="${GITHUB_BRANCH:-main}"
+    GITHUB_TOKEN="${GITHUB_TOKEN:-}"
+    
+    cd "$COMPOSE_DIR" || exit 1
+    
+    # Configura git se necessario
+    git config --global --add safe.directory "$COMPOSE_DIR" 2>/dev/null || true
+    
+    # Se la directory è già un repository git, fai pull
     if [ -d "$COMPOSE_DIR/.git" ]; then
-        log "Trovato repository git - eseguo git pull per aggiornare il codice..."
-        cd "$COMPOSE_DIR" || exit 1
+        log "📦 Repository git trovata - aggiorno i file..."
         
-        # Configura git se necessario
-        git config --global --add safe.directory "$COMPOSE_DIR" 2>/dev/null || true
+        # Verifica che il remote sia configurato correttamente
+        if ! git remote get-url origin > /dev/null 2>&1; then
+            log "🔧 Configuro remote origin..."
+            if [ -n "$GITHUB_TOKEN" ]; then
+                git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPO}.git" 2>/dev/null || \
+                git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPO}.git"
+            else
+                git remote add origin "https://github.com/${GITHUB_REPO}.git" 2>/dev/null || \
+                git remote set-url origin "https://github.com/${GITHUB_REPO}.git"
+            fi
+        fi
         
-        # Pull ultimo codice
-        git pull origin main >> "$LOG_FILE" 2>&1 || git pull origin master >> "$LOG_FILE" 2>&1 || {
-            log "ATTENZIONE: git pull fallito, continuo comunque con restart..."
+        # Fetch e pull
+        log "📥 Fetch da GitHub..."
+        git fetch origin "$GITHUB_BRANCH" >> "$LOG_FILE" 2>&1 || {
+            log "⚠️ ATTENZIONE: git fetch fallito, continuo comunque..."
         }
         
-        log "Codice aggiornato via git pull"
+        log "📥 Pull da GitHub..."
+        git pull origin "$GITHUB_BRANCH" >> "$LOG_FILE" 2>&1 || {
+            log "⚠️ ATTENZIONE: git pull fallito, provo checkout diretto..."
+            git checkout -f "origin/${GITHUB_BRANCH}" >> "$LOG_FILE" 2>&1 || {
+                log "❌ ERRORE: anche checkout fallito"
+            }
+        }
+        
+        log "✅ Codice aggiornato via git pull"
     else
-        # Non è un repository git - prova a fare git clone direttamente da GitHub
-        log "Directory non è un repository git - provo a fare git clone da GitHub..."
+        # Non è un repository git - clona l'intera repository
+        log "📦 Directory non è un repository git - clono da GitHub..."
         
-        # Leggi GITHUB_REPO e GITHUB_TOKEN dalle variabili d'ambiente o dal .env
-        GITHUB_REPO="${GITHUB_REPO:-Paluello/ERMES}"
-        GITHUB_BRANCH="${GITHUB_BRANCH:-main}"
-        GITHUB_TOKEN="${GITHUB_TOKEN:-}"
-        
-        cd "$COMPOSE_DIR" || exit 1
-        
-        # Salva i file esistenti (docker-compose, .env, etc)
-        log "Salvo file esistenti..."
+        # Salva file esistenti importanti
         mkdir -p /tmp/ermes_backup
         cp -f docker-compose*.yml .env* /tmp/ermes_backup/ 2>/dev/null || true
         
-        # Clone da GitHub
+        # Clone completo
         if [ -n "$GITHUB_TOKEN" ]; then
-            log "Clone da GitHub con token..."
+            log "📥 Clone con token..."
             git clone --depth 1 --branch "$GITHUB_BRANCH" \
                 "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPO}.git" \
-                /tmp/ermes_temp >> "$LOG_FILE" 2>&1 || {
-                log "ERRORE: git clone fallito!"
+                /tmp/ermes_clone >> "$LOG_FILE" 2>&1 || {
+                log "❌ ERRORE: git clone fallito!"
                 exit 1
             }
         else
-            log "Clone da GitHub senza token..."
+            log "📥 Clone senza token..."
             git clone --depth 1 --branch "$GITHUB_BRANCH" \
                 "https://github.com/${GITHUB_REPO}.git" \
-                /tmp/ermes_temp >> "$LOG_FILE" 2>&1 || {
-                log "ERRORE: git clone fallito!"
+                /tmp/ermes_clone >> "$LOG_FILE" 2>&1 || {
+                log "❌ ERRORE: git clone fallito!"
                 exit 1
             }
         fi
         
-        # Copia solo il codice backend/app nella directory montata
-        log "Copio nuovo codice nella directory montata..."
-        cp -r /tmp/ermes_temp/backend/app/* "$BACKEND_DIR/app/" 2>/dev/null || {
-            log "ERRORE: copia codice fallita!"
-            rm -rf /tmp/ermes_temp
-            exit 1
+        # Copia tutti i file nella directory corrente
+        log "📋 Copio file nella directory montata..."
+        rsync -av --exclude='.git' /tmp/ermes_clone/ "$COMPOSE_DIR/" >> "$LOG_FILE" 2>&1 || {
+            log "⚠️ rsync non disponibile, uso cp..."
+            cp -r /tmp/ermes_clone/* "$COMPOSE_DIR/" 2>/dev/null || true
+            cp -r /tmp/ermes_clone/.* "$COMPOSE_DIR/" 2>/dev/null || true
         }
         
         # Ripristina file esistenti
         cp -f /tmp/ermes_backup/* "$COMPOSE_DIR/" 2>/dev/null || true
         
-        # Pulisci
-        rm -rf /tmp/ermes_temp /tmp/ermes_backup
+        # Inizializza git nella directory finale
+        cd "$COMPOSE_DIR" || exit 1
+        git init >> "$LOG_FILE" 2>&1
+        if [ -n "$GITHUB_TOKEN" ]; then
+            git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPO}.git" 2>/dev/null || \
+            git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPO}.git"
+        else
+            git remote add origin "https://github.com/${GITHUB_REPO}.git" 2>/dev/null || \
+            git remote set-url origin "https://github.com/${GITHUB_REPO}.git"
+        fi
+        git add -A >> "$LOG_FILE" 2>&1 || true
+        git reset --hard "origin/${GITHUB_BRANCH}" >> "$LOG_FILE" 2>&1 || true
         
-        log "Codice aggiornato via git clone"
+        # Pulisci
+        rm -rf /tmp/ermes_clone /tmp/ermes_backup
+        
+        log "✅ Repository clonato e inizializzato"
     fi
+    
+    # Verifica che i file siano presenti
+    if [ ! -f "$COMPOSE_DIR/backend/app/main.py" ]; then
+        log "❌ ERRORE: File main.py non trovato in $COMPOSE_DIR/backend/app/"
+        log "Contenuto directory: $(ls -la $COMPOSE_DIR/backend/app/ 2>&1 | head -10)"
+        exit 1
+    fi
+    
+    log "✅ Verifica: File main.py trovato in $COMPOSE_DIR/backend/app/"
     
     # Riavvia solo il backend (il codice è già montato come volume, quindi basta restart)
     log "Riavvio backend con nuovo codice (nessun rebuild necessario)..."

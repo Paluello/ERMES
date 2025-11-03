@@ -1,3 +1,28 @@
+#!/bin/bash
+# Script rapido per fixare l'errore WebSocket sul NAS
+# Esegui questo script sul NAS per aggiornare main.py
+
+echo "🔧 Fix WebSocket sul NAS..."
+
+# Path della directory sul NAS
+NAS_DIR="/volume1/docker/ERMES"
+MAIN_PY="$NAS_DIR/backend/app/main.py"
+
+# Verifica che la directory esista
+if [ ! -d "$NAS_DIR" ]; then
+    echo "❌ Directory $NAS_DIR non trovata!"
+    echo "Verifica il path corretto sul tuo NAS"
+    exit 1
+fi
+
+# Backup del file corrente
+if [ -f "$MAIN_PY" ]; then
+    cp "$MAIN_PY" "$MAIN_PY.backup.$(date +%Y%m%d_%H%M%S)"
+    echo "✅ Backup creato"
+fi
+
+# Crea il file corretto
+cat > "$MAIN_PY" << 'MAIN_PY_EOF'
 """FastAPI application entry point"""
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
@@ -93,4 +118,10 @@ async def root():
         "docs": "/docs",
         "dashboard": "Dashboard non disponibile"
     }
+MAIN_PY_EOF
+
+echo "✅ File main.py aggiornato!"
+echo ""
+echo "Ora riavvia il backend:"
+echo "  docker compose -f docker-compose.github.nas.yml restart ermes-backend"
 

@@ -26,6 +26,8 @@ struct StreamControlView: View {
                     VideoPreviewView(previewLayer: previewLayer)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .edgesIgnoringSafeArea(.all)
+                        .blur(radius: streamManager.isStreaming ? 0 : 15) // Sfocato quando non in streaming
+                        .animation(.easeInOut(duration: 0.3), value: streamManager.isStreaming)
                     
                     // Su Simulator, mostra un messaggio informativo
                     if UIDevice.isSimulator {
