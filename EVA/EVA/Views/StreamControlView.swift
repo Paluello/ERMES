@@ -13,22 +13,30 @@ struct StreamControlView: View {
     @State private var showingSettings = false
     
     var body: some View {
-        VStack {
-            // Preview video
+        ZStack {
+            // Preview video a tutto schermo (sotto)
             if let previewLayer = streamManager.videoCapture.previewLayer {
                 VideoPreviewView(previewLayer: previewLayer)
-                    .frame(maxHeight: .infinity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .edgesIgnoringSafeArea(.all)
             } else {
-                Rectangle()
-                    .fill(Color.black)
+                Color.black
+                    .edgesIgnoringSafeArea(.all)
                     .overlay(
-                        Text("Nessun preview disponibile")
-                            .foregroundColor(.white)
+                        VStack {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            Text("Caricamento camera...")
+                                .foregroundColor(.white)
+                                .padding(.top)
+                        }
                     )
             }
             
-            // Controlli
-            VStack(spacing: 16) {
+            // Controlli sovrapposti in basso
+            VStack {
+                Spacer()
+                VStack(spacing: 16) {
                 // Stato connessione
                 HStack {
                     Circle()
@@ -66,10 +74,18 @@ struct StreamControlView: View {
                 if let telemetry = streamManager.telemetryService.lastTelemetry {
                     TelemetryDisplayView(telemetry: telemetry)
                 }
+                }
+                .padding()
+                .background(
+                    Color.black.opacity(0.7)
+                        .background(.ultraThinMaterial)
+                )
+                .cornerRadius(16)
+                .padding()
             }
-            .padding()
-            .background(Color(UIColor.systemBackground))
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black)
         .navigationTitle("ERMES Streamer")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -89,13 +105,19 @@ struct VideoPreviewView: UIViewRepresentable {
     
     func makeUIView(context: Context) -> UIView {
         let view = UIView()
+        view.backgroundColor = .black
         previewLayer.frame = view.bounds
+        previewLayer.videoGravity = .resizeAspectFill
         view.layer.addSublayer(previewLayer)
         return view
     }
     
     func updateUIView(_ uiView: UIView, context: Context) {
+        // Aggiorna il frame quando la view cambia dimensione
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         previewLayer.frame = uiView.bounds
+        CATransaction.commit()
     }
 }
 

@@ -39,8 +39,22 @@ class StreamManager: ObservableObject {
             self?.rtmpStream.appendVideoSampleBuffer(sampleBuffer)
         }
         
-        // Configura la preview immediatamente all'avvio
-        videoCapture.setup(config: config)
+        // Configura e avvia la camera immediatamente per la preview
+        setupCameraPreview()
+    }
+    
+    private func setupCameraPreview() {
+        // Richiedi permessi e avvia camera per preview
+        Task { @MainActor in
+            let cameraStatus = AVCaptureDevice.authorizationStatus(for: .video)
+            if cameraStatus == .notDetermined {
+                await AVCaptureDevice.requestAccess(for: .video)
+            }
+            
+            // Configura e avvia camera per preview (anche senza streaming)
+            videoCapture.setup(config: config)
+            videoCapture.start()
+        }
     }
     
     func startStreaming() async {
