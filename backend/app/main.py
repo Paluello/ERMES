@@ -1,10 +1,11 @@
 """FastAPI application entry point"""
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI
+# from fastapi import WebSocket  # Disabilitato temporaneamente
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 from app.api import routes
-from app.api import websocket as websocket_module
+# from app.api import websocket as websocket_module  # Disabilitato temporaneamente
 from app.config import settings
 from app.globals import source_manager, get_orchestrator
 from app.orchestrator import TrackingOrchestrator
