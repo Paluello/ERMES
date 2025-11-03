@@ -102,9 +102,9 @@ Quando GitHub invia il webhook:
 1. ✅ Il backend verifica la signature (se configurata)
 2. ✅ Verifica che sia un evento `push` sul branch `main` o `master`
 3. ✅ Esegue lo script `/app/update_container.sh` in background
-4. ✅ Lo script esegue `docker compose build --no-cache ermes-backend`
-5. ✅ Lo script esegue `docker compose restart ermes-backend`
-6. ✅ Il nuovo container viene avviato con il codice più recente da GitHub
+4. ✅ Lo script scarica direttamente il codice da GitHub come ZIP (senza bisogno di git!)
+5. ✅ Estrae e copia i file nella directory montata
+6. ✅ Riavvia il backend (veloce, ~10 secondi, nessun rebuild necessario)
 
 ## Log degli Aggiornamenti
 

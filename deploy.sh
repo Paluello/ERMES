@@ -14,22 +14,33 @@ echo "================================"
 
 # Rileva comando docker-compose (può essere docker-compose o docker compose)
 # Verifica anche se serve sudo
+NEED_SUDO=false
 if command -v docker-compose &> /dev/null; then
     DOCKER_COMPOSE="docker-compose"
 elif docker compose version &> /dev/null 2>&1; then
     DOCKER_COMPOSE="docker compose"
 elif sudo docker compose version &> /dev/null 2>&1; then
     DOCKER_COMPOSE="sudo docker compose"
+    DOCKER_CMD="sudo docker"
+    NEED_SUDO=true
     echo -e "${YELLOW}⚠ Usando sudo per Docker${NC}"
 else
     echo -e "${RED}❌ Errore: docker-compose non trovato!${NC}"
     echo "Assicurati che Docker sia installato sul NAS"
     echo "Prova: docker --version"
     echo ""
-    echo "Se ottieni 'permission denied', prova:"
-    echo "  sudo usermod -aG docker $USER"
-    echo "  (poi fai logout e login di nuovo)"
+    echo "Se ottieni 'permission denied', lo script userà sudo automaticamente"
     exit 1
+fi
+
+# Se docker ps fallisce senza sudo, usa sudo
+if ! $DOCKER_COMPOSE ps &> /dev/null 2>&1; then
+    if [ "$NEED_SUDO" = false ]; then
+        echo -e "${YELLOW}⚠ Rilevato problema permessi, uso sudo...${NC}"
+        DOCKER_COMPOSE="sudo docker compose"
+        DOCKER_CMD="sudo docker"
+        NEED_SUDO=true
+    fi
 fi
 
 echo -e "${GREEN}✓ Usando: $DOCKER_COMPOSE${NC}"
@@ -65,7 +76,7 @@ $DOCKER_COMPOSE -f $COMPOSE_FILE down || true
 
 # Rimuovi vecchia immagine backend (forza rebuild)
 echo -e "\n${YELLOW}🗑 Rimuovo vecchia immagine backend...${NC}"
-docker rmi ermes-backend 2>/dev/null || true
+${DOCKER_CMD:-docker} rmi ermes-backend 2>/dev/null || true
 
 # Rebuild e avvia
 echo -e "\n${GREEN}🔨 Rebuild immagini da GitHub...${NC}"
