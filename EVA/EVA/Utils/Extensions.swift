@@ -25,6 +25,17 @@ extension UIDevice {
     }
 }
 
+extension UIDevice {
+    /// Verifica se l'app è in esecuzione su iOS Simulator
+    static var isSimulator: Bool {
+        #if targetEnvironment(simulator)
+        return true
+        #else
+        return false
+        #endif
+    }
+}
+
 extension UUID {
     static var deviceUUID: UUID {
         // Usa UserDefaults per mantenere lo stesso UUID tra sessioni

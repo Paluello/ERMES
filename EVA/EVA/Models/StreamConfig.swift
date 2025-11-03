@@ -12,7 +12,7 @@ struct StreamConfig {
     var resolution: VideoResolution = .hd1080p
     var frameRate: Int = 30
     var bitrate: Int = 3000000 // 3 Mbps
-    var backendURL: String = "http://localhost:8000"
+    var backendURL: String = "http://100.84.46.19:8000"
     var apiKey: String?
     
     enum VideoResolution {

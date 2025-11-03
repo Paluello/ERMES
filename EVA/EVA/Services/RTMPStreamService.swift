@@ -85,7 +85,7 @@ class RTMPStreamService: ObservableObject {
     }
     
     func appendVideoSampleBuffer(_ sampleBuffer: CMSampleBuffer) {
-        guard isConnected, let rtmpStream = rtmpStream else {
+        guard isConnected, rtmpStream != nil else {
             return
         }
         

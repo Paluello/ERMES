@@ -10,25 +10,95 @@ import AVFoundation
 
 struct StreamControlView: View {
     @ObservedObject var streamManager: StreamManager
+    @ObservedObject private var videoCapture: VideoCaptureService
     @State private var showingSettings = false
+    
+    init(streamManager: StreamManager) {
+        self.streamManager = streamManager
+        self.videoCapture = streamManager.videoCapture
+    }
     
     var body: some View {
         ZStack {
             // Preview video a tutto schermo (sotto)
-            if let previewLayer = streamManager.videoCapture.previewLayer {
-                VideoPreviewView(previewLayer: previewLayer)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .edgesIgnoringSafeArea(.all)
+            if let previewLayer = videoCapture.previewLayer {
+                ZStack {
+                    VideoPreviewView(previewLayer: previewLayer)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .edgesIgnoringSafeArea(.all)
+                    
+                    // Su Simulator, mostra un messaggio informativo
+                    if UIDevice.isSimulator {
+                        VStack {
+                            Spacer()
+                            VStack(spacing: 12) {
+                                Image(systemName: "camera.fill")
+                                    .font(.system(size: 50))
+                                    .foregroundColor(.white.opacity(0.7))
+                                Text("iOS Simulator")
+                                    .font(.headline)
+                                    .foregroundColor(.white.opacity(0.9))
+                                Text("La camera non è disponibile su Simulator.\nProva su un dispositivo fisico per vedere il video.")
+                                    .font(.caption)
+                                    .foregroundColor(.white.opacity(0.7))
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal)
+                            }
+                            .padding()
+                            .background(Color.black.opacity(0.6))
+                            .cornerRadius(12)
+                            .padding(.bottom, 100)
+                        }
+                    }
+                }
             } else {
                 Color.black
                     .edgesIgnoringSafeArea(.all)
                     .overlay(
-                        VStack {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            Text("Caricamento camera...")
-                                .foregroundColor(.white)
-                                .padding(.top)
+                        VStack(spacing: 20) {
+                            if let errorMessage = videoCapture.errorMessage {
+                                VStack(spacing: 12) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .font(.system(size: 50))
+                                        .foregroundColor(.orange)
+                                    
+                                    Text("Errore Camera")
+                                        .font(.headline)
+                                        .foregroundColor(.white)
+                                    
+                                    Text(errorMessage)
+                                        .font(.body)
+                                        .foregroundColor(.white.opacity(0.9))
+                                        .multilineTextAlignment(.center)
+                                        .padding(.horizontal)
+                                    
+                                    if videoCapture.authorizationStatus == .denied || 
+                                       videoCapture.authorizationStatus == .restricted {
+                                        Button(action: {
+                                            if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
+                                                UIApplication.shared.open(settingsUrl)
+                                            }
+                                        }) {
+                                            Text("Apri Impostazioni")
+                                                .font(.headline)
+                                                .foregroundColor(.white)
+                                                .padding(.horizontal, 24)
+                                                .padding(.vertical, 12)
+                                                .background(Color.blue)
+                                                .cornerRadius(10)
+                                        }
+                                        .padding(.top, 8)
+                                    }
+                                }
+                            } else {
+                                VStack(spacing: 12) {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    Text("Caricamento camera...")
+                                        .foregroundColor(.white)
+                                        .padding(.top)
+                                }
+                            }
                         }
                     )
             }
@@ -106,18 +176,37 @@ struct VideoPreviewView: UIViewRepresentable {
     func makeUIView(context: Context) -> UIView {
         let view = UIView()
         view.backgroundColor = .black
-        previewLayer.frame = view.bounds
+        
+        // Assicurati che il preview layer sia aggiunto correttamente
         previewLayer.videoGravity = .resizeAspectFill
+        previewLayer.frame = view.bounds
         view.layer.addSublayer(previewLayer)
+        
+        print("📹 VideoPreviewView creata, frame: \(view.bounds)")
+        
         return view
     }
     
     func updateUIView(_ uiView: UIView, context: Context) {
         // Aggiorna il frame quando la view cambia dimensione
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        previewLayer.frame = uiView.bounds
-        CATransaction.commit()
+        // IMPORTANTE: aggiorna sempre il frame perché potrebbe cambiare
+        DispatchQueue.main.async {
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            let newFrame = uiView.bounds
+            if previewLayer.frame != newFrame {
+                previewLayer.frame = newFrame
+                print("📹 Preview layer frame aggiornato: \(newFrame)")
+            }
+            CATransaction.commit()
+            
+            // Assicurati che il preview layer sia ancora nella view
+            if previewLayer.superlayer != uiView.layer {
+                print("⚠️ Preview layer non nella view, riaggiungo...")
+                previewLayer.removeFromSuperlayer()
+                uiView.layer.addSublayer(previewLayer)
+            }
+        }
     }
 }
 

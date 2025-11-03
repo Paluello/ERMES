@@ -19,16 +19,16 @@ class StreamManager: ObservableObject {
     var config = StreamConfig()
     let videoCapture = VideoCaptureService()
     let rtmpStream = RTMPStreamService()
-    let telemetryService: TelemetryService
+    var telemetryService: TelemetryService
     
-    private let apiClient: ERMESAPIClient
+    private var apiClient: ERMESAPIClient
     private let sourceId: String
     
     init() {
         // Genera UUID device per source_id
         sourceId = UUID.deviceUUID.uuidString
         
-        // Inizializza API client
+        // Inizializza API client con configurazione di default
         apiClient = ERMESAPIClient(baseURL: config.backendURL, apiKey: config.apiKey)
         
         // Inizializza telemetry service
@@ -46,14 +46,61 @@ class StreamManager: ObservableObject {
     private func setupCameraPreview() {
         // Richiedi permessi e avvia camera per preview
         Task { @MainActor in
-            let cameraStatus = AVCaptureDevice.authorizationStatus(for: .video)
-            if cameraStatus == .notDetermined {
-                await AVCaptureDevice.requestAccess(for: .video)
-            }
+            print("📷 Richiesta permessi camera...")
+            // Richiedi permessi usando il metodo del servizio
+            let granted = await videoCapture.requestPermission()
             
-            // Configura e avvia camera per preview (anche senza streaming)
-            videoCapture.setup(config: config)
-            videoCapture.start()
+            if granted {
+                print("✅ Permessi camera concessi")
+                
+                // Piccolo delay per assicurarsi che i permessi siano completamente processati
+                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 secondi
+                
+                // Verifica di nuovo lo stato dopo il delay
+                let status = AVCaptureDevice.authorizationStatus(for: .video)
+                guard status == .authorized else {
+                    print("⚠️ Permessi camera non ancora disponibili dopo la richiesta")
+                    return
+                }
+                
+                print("📷 Configurazione camera...")
+                // Configura e avvia camera per preview (anche senza streaming)
+                videoCapture.setup(config: config)
+                
+                // Attendi che la configurazione sia completata (il setup è asincrono)
+                // Aspettiamo un po' di più per permettere la configurazione completa
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 secondi
+                
+                print("📷 Avvio camera...")
+                videoCapture.start()
+                
+                // Attendi che la sessione si avvii
+                // Su Simulator potrebbe non funzionare, ma il preview layer dovrebbe comunque essere visibile
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 secondi
+                
+                // Verifica che il preview layer sia stato creato
+                if videoCapture.previewLayer == nil {
+                    print("⚠️ Preview layer non creato dopo il primo tentativo")
+                    // Riprova la configurazione
+                    print("🔄 Riprovo configurazione...")
+                    videoCapture.setup(config: config)
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    videoCapture.start()
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                }
+                
+                // Verifica finale
+                if videoCapture.previewLayer != nil {
+                    print("✅ Preview layer disponibile!")
+                } else {
+                    print("❌ Preview layer ancora non disponibile")
+                    if UIDevice.isSimulator {
+                        print("ℹ️ Su Simulator la camera potrebbe non funzionare correttamente")
+                    }
+                }
+            } else {
+                print("⚠️ Permessi camera negati. L'utente deve abilitarli nelle Impostazioni.")
+            }
         }
     }
     
@@ -63,10 +110,17 @@ class StreamManager: ObservableObject {
         isConnecting = true
         
         // Richiedi permessi camera
-        let cameraStatus = AVCaptureDevice.authorizationStatus(for: .video)
-        if cameraStatus != .authorized {
-            await AVCaptureDevice.requestAccess(for: .video)
+        let granted = await videoCapture.requestPermission()
+        
+        guard granted else {
+            print("⚠️ Impossibile avviare streaming: permessi camera negati")
+            isConnecting = false
+            return
         }
+        
+        // Aggiorna API client con configurazione corrente (nel caso sia cambiata)
+        apiClient = ERMESAPIClient(baseURL: config.backendURL, apiKey: config.apiKey)
+        telemetryService = TelemetryService(apiClient: apiClient)
         
         // Setup video capture
         videoCapture.setup(config: config)
