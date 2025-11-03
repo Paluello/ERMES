@@ -14,11 +14,19 @@ log() {
 
 log "Webhook: Inizio aggiornamento..."
 
-# Verifica che docker sia disponibile
-if ! command -v docker &> /dev/null; then
-    log "ERRORE: Docker non trovato nel container"
+# Verifica che docker-compose sia disponibile (può essere docker-compose o docker compose)
+DOCKER_COMPOSE_CMD=""
+if command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker-compose"
+elif command -v docker &> /dev/null && docker compose version &> /dev/null 2>&1; then
+    DOCKER_COMPOSE_CMD="docker compose"
+else
+    log "ERRORE: docker-compose non trovato nel container"
+    log "Verifica che docker-compose sia installato nel Dockerfile"
     exit 1
 fi
+
+log "Usando: $DOCKER_COMPOSE_CMD"
 
 # Verifica che il socket Docker sia montato
 if [ ! -S /var/run/docker.sock ]; then
@@ -117,20 +125,10 @@ if [ -d "/app/backend/app" ]; then
     
     # Riavvia solo il backend (il codice è già montato come volume, quindi basta restart)
     log "Riavvio backend con nuovo codice (nessun rebuild necessario)..."
-    if command -v docker-compose &> /dev/null; then
-        docker-compose -f "$COMPOSE_FILE" restart ermes-backend >> "$LOG_FILE" 2>&1 || {
-            log "ERRORE durante il riavvio!"
-            exit 1
-        }
-    elif command -v docker &> /dev/null && docker compose version &> /dev/null 2>&1; then
-        docker compose -f "$COMPOSE_FILE" restart ermes-backend >> "$LOG_FILE" 2>&1 || {
-            log "ERRORE durante il riavvio!"
-            exit 1
-        }
-    else
-        log "ERRORE: docker-compose non trovato!"
+    $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" restart ermes-backend >> "$LOG_FILE" 2>&1 || {
+        log "ERRORE durante il riavvio!"
         exit 1
-    fi
+    }
     
     log "✅ Aggiornamento veloce completato (solo restart ~5 secondi, nessun rebuild)"
     exit 0
@@ -154,20 +152,10 @@ if [ -d "$COMPOSE_DIR/.git" ]; then
     
     # Riavvia solo il backend (il codice è già aggiornato via volume)
     log "Riavvio backend con nuovo codice (nessun rebuild necessario)..."
-    if command -v docker-compose &> /dev/null; then
-        docker-compose -f "$COMPOSE_FILE" restart ermes-backend >> "$LOG_FILE" 2>&1 || {
-            log "ERRORE durante il riavvio!"
-            exit 1
-        }
-    elif command -v docker &> /dev/null && docker compose version &> /dev/null 2>&1; then
-        docker compose -f "$COMPOSE_FILE" restart ermes-backend >> "$LOG_FILE" 2>&1 || {
-            log "ERRORE durante il riavvio!"
-            exit 1
-        }
-    else
-        log "ERRORE: docker-compose non trovato!"
+    $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" restart ermes-backend >> "$LOG_FILE" 2>&1 || {
+        log "ERRORE durante il riavvio!"
         exit 1
-    fi
+    }
     
     log "✅ Aggiornamento veloce completato (solo restart ~5 secondi, nessun rebuild)"
 else
@@ -175,34 +163,17 @@ else
     
     # Rebuild backend (usa cache quando possibile, evita --no-cache)
     log "Rebuild backend con ultimo codice da GitHub..."
-    if command -v docker-compose &> /dev/null; then
-        docker-compose -f "$COMPOSE_FILE" build ermes-backend >> "$LOG_FILE" 2>&1 || {
-            log "ERRORE durante il build!"
-            exit 1
-        }
-        
-        # Riavvio backend
-        log "Riavvio backend..."
-        docker-compose -f "$COMPOSE_FILE" restart ermes-backend >> "$LOG_FILE" 2>&1 || {
-            log "ERRORE durante il riavvio!"
-            exit 1
-        }
-    elif command -v docker &> /dev/null && docker compose version &> /dev/null 2>&1; then
-        docker compose -f "$COMPOSE_FILE" build ermes-backend >> "$LOG_FILE" 2>&1 || {
-            log "ERRORE durante il build!"
-            exit 1
-        }
-        
-        # Riavvio backend
-        log "Riavvio backend..."
-        docker compose -f "$COMPOSE_FILE" restart ermes-backend >> "$LOG_FILE" 2>&1 || {
-            log "ERRORE durante il riavvio!"
-            exit 1
-        }
-    else
-        log "ERRORE: docker-compose non trovato!"
+    $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" build ermes-backend >> "$LOG_FILE" 2>&1 || {
+        log "ERRORE durante il build!"
         exit 1
-    fi
+    }
+    
+    # Riavvio backend
+    log "Riavvio backend..."
+    $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" restart ermes-backend >> "$LOG_FILE" 2>&1 || {
+        log "ERRORE durante il riavvio!"
+        exit 1
+    }
     
     log "✅ Aggiornamento completato (rebuild completo)"
 fi
