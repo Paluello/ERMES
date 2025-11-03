@@ -4,28 +4,26 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.api import routes, websocket
 from app.config import settings
-from app.globals import source_manager
+from app.globals import source_manager, get_orchestrator
 from app.orchestrator import TrackingOrchestrator
-
-# Orchestratore globale
-orchestrator: TrackingOrchestrator = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Gestione lifecycle applicazione"""
-    global orchestrator
+    from app.globals import set_orchestrator
     
     # Startup
     orchestrator = TrackingOrchestrator(source_manager)
+    set_orchestrator(orchestrator)
     await orchestrator.start_async()
     print("ERMES orchestrator avviato")
     
     yield
     
     # Shutdown
-    if orchestrator:
-        orchestrator.stop()
+    orchestrator.stop()
+    set_orchestrator(None)
     print("ERMES orchestrator fermato")
 
 

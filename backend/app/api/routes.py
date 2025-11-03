@@ -8,7 +8,7 @@ import os
 from app.sources.source_manager import SourceManager
 from app.sources.mobile_phone_source import MobilePhoneSource
 from app.config import settings
-from app.globals import source_manager
+from app.globals import source_manager, get_orchestrator
 
 router = APIRouter(prefix="/api", tags=["api"])
 
@@ -96,6 +96,16 @@ async def register_mobile_source(
     )
     
     if success:
+        # Avvia elaborazione video per la sorgente appena registrata
+        orchestrator = get_orchestrator()
+        if orchestrator:
+            try:
+                orchestrator.start_processing_source(source_id)
+                print(f"Elaborazione video avviata per sorgente mobile {source_id}")
+            except Exception as e:
+                print(f"Attenzione: impossibile avviare elaborazione per {source_id}: {e}")
+                # Non falliamo la registrazione se l'elaborazione non parte
+        
         return {
             "success": True,
             "source_id": source_id,
