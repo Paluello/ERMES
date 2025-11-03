@@ -154,6 +154,77 @@ async def disconnect_mobile_source(
         )
 
 
+@router.post("/update/trigger")
+async def trigger_update():
+    """
+    Endpoint per triggerare manualmente l'aggiornamento del sistema da GitHub.
+    
+    Questo endpoint esegue lo stesso processo di aggiornamento del webhook GitHub,
+    ma può essere chiamato manualmente dall'interfaccia Swagger.
+    
+    ⚠️ ATTENZIONE: Questo processo può richiedere alcuni minuti.
+    """
+    try:
+        # Trova lo script di aggiornamento
+        update_script = os.getenv("UPDATE_SCRIPT_PATH", "/app/update_container.sh")
+        
+        if not os.path.exists(update_script):
+            raise HTTPException(
+                status_code=500,
+                detail=f"Script di aggiornamento non trovato: {update_script}"
+            )
+        
+        # Esegui aggiornamento in background
+        process = subprocess.Popen(
+            ["/bin/bash", update_script],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        
+        return {
+            "success": True,
+            "message": "Aggiornamento avviato in background",
+            "process_id": process.pid,
+            "note": "Controlla i log con: docker logs ermes-backend | grep update"
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Errore durante avvio aggiornamento: {str(e)}"
+        )
+
+
+@router.get("/update/status")
+async def get_update_status():
+    """
+    Ottieni lo stato dell'ultimo aggiornamento controllando i log.
+    """
+    log_file = "/tmp/ermes_update.log"
+    
+    if not os.path.exists(log_file):
+        return {
+            "status": "no_logs",
+            "message": "Nessun log di aggiornamento trovato"
+        }
+    
+    try:
+        with open(log_file, 'r') as f:
+            lines = f.readlines()
+            last_lines = lines[-10:] if len(lines) > 10 else lines
+        
+        return {
+            "status": "available",
+            "last_logs": "".join(last_lines),
+            "total_lines": len(lines)
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Errore lettura log: {str(e)}"
+        }
+
+
 @router.post("/webhook/github")
 async def github_webhook(
     request: Request,
