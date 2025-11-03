@@ -17,6 +17,10 @@ node_modules/
 dist/
 *.log
 
+# React app
+backend/app/static/app/node_modules/
+backend/app/static/app/dist/
+
 # IDE
 .vscode/
 .idea/

@@ -1,8 +1,9 @@
 """FastAPI application entry point"""
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 # from fastapi import WebSocket  # Disabilitato temporaneamente
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from contextlib import asynccontextmanager
 from app.api import routes
 # from app.api import websocket as websocket_module  # Disabilitato temporaneamente
@@ -61,7 +62,9 @@ app = FastAPI(
     title="ERMES - Sistema Tracking e Geolocalizzazione",
     description="Sistema modulare per tracking e geolocalizzazione multi-sorgente",
     version="0.1.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url=None,  # Disabilita Swagger UI default, usiamo React app
+    redoc_url=None  # Disabilita anche ReDoc
 )
 
 # CORS middleware per frontend
@@ -81,17 +84,37 @@ app.include_router(routes.router)
 # async def websocket_route(websocket: WebSocket):
 #     await websocket_module.websocket_endpoint(websocket)
 
-# Serve dashboard HTML alla root
-@app.get("/")
+# Mount React app static files PRIMA del mount generico (ordine importante!)
+app_dist_dir = os.path.join(os.path.dirname(__file__), "static", "app", "dist")
+if os.path.exists(app_dist_dir):
+    app.mount("/static/app", StaticFiles(directory=app_dist_dir), name="app_static")
+
+# Mount static files directory (dopo /static/app per evitare conflitti)
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+# Serve React app SPA per route frontend
+@app.get("/", include_in_schema=False)
 async def root():
-    """Dashboard principale"""
-    dashboard_path = os.path.join(os.path.dirname(__file__), "static", "dashboard.html")
-    if os.path.exists(dashboard_path):
-        return FileResponse(dashboard_path)
+    """Dashboard principale - React SPA"""
+    app_html_path = os.path.join(os.path.dirname(__file__), "static", "app", "dist", "index.html")
+    if os.path.exists(app_html_path):
+        return FileResponse(app_html_path)
     return {
         "message": "ERMES API",
         "version": "0.1.0",
-        "docs": "/docs",
-        "dashboard": "Dashboard non disponibile"
+        "error": "React app non disponibile. Esegui 'npm run build' nella cartella backend/app/static/app"
+    }
+
+@app.get("/docs", include_in_schema=False)
+async def docs():
+    """Documentazione API - React SPA"""
+    app_html_path = os.path.join(os.path.dirname(__file__), "static", "app", "dist", "index.html")
+    if os.path.exists(app_html_path):
+        return FileResponse(app_html_path)
+    return {
+        "message": "Documentazione non disponibile",
+        "error": "React app non compilata"
     }
 

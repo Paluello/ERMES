@@ -1,0 +1,63 @@
+FILE ESSENZIALI DA COPIARE SUL NAS:
+
+📁 Struttura directory:
+/volume1/docker/ERMES/
+├── docker-compose.github.nas.yml          ← OBBLIGATORIO
+├── .env                                    ← OBBLIGATORIO (crealo tu)
+│
+├── backend/
+│   ├── Dockerfile.github.nas              ← OBBLIGATORIO
+│   ├── requirements.txt                   ← OBBLIGATORIO
+│   ├── nginx-rtmp.conf                    ← OBBLIGATORIO
+│   ├── update_container.sh                ← OBBLIGATORIO
+│   │
+│   └── app/                               ← OBBLIGATORIO (tutta la cartella)
+│       ├── __init__.py
+│       ├── main.py
+│       ├── config.py
+│       ├── globals.py
+│       ├── orchestrator.py
+│       ├── auto_updater.py
+│       │
+│       ├── api/
+│       │   ├── __init__.py
+│       │   └── routes.py
+│       │
+│       ├── drone/
+│       │   ├── __init__.py
+│       │   ├── mavlink_client.py
+│       │   └── telemetry.py
+│       │
+│       ├── geolocation/
+│       │   ├── __init__.py
+│       │   ├── camera_calibration.py
+│       │   └── georef_engine.py
+│       │
+│       ├── rtmp/
+│       │   ├── __init__.py
+│       │   └── rtmp_receiver.py
+│       │
+│       ├── sources/
+│       │   ├── __init__.py
+│       │   ├── drone_source.py
+│       │   ├── mobile_phone_source.py
+│       │   ├── static_camera_source.py
+│       │   └── source_manager.py
+│       │
+│       ├── vision/
+│       │   ├── __init__.py
+│       │   ├── face_detector.py
+│       │   ├── tracker.py
+│       │   ├── video_processor.py
+│       │   └── yolo_detector.py
+│       │
+│       └── static/
+│           └── dashboard.html
+
+NON SERVE:
+- frontend/ (non necessario per NAS)
+- docs/ (non necessario)
+- README.md (non necessario)
+- Altri file .md (non necessari)
+- venv/ (non necessario)
+- node_modules/ (non necessario)
