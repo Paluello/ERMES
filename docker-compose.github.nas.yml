@@ -15,7 +15,11 @@ services:
       - "8000:8000"
     volumes:
       - ermes-models:/app/backend/models
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./backend/update_container.sh:/app/update_container.sh:ro
+      - .:/volume1/docker/ERMES:ro  # Monta la directory per permettere al container di eseguire docker compose
     environment:
+      - UPDATE_SCRIPT_PATH=/app/update_container.sh
       - GPS_PRECISION=standard
       - YOLO_MODEL=yolov8n.pt
       - YOLO_CONF_THRESHOLD=0.6

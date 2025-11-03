@@ -6,9 +6,16 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     libgl1 \
     libglib2.0-0 \
-    && rm -rf /var/lib/apt/lists/*
+    curl \
+    && rm -rf /var/lib/apt/lists/* && \
+    curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && \
+    chmod +x /usr/local/bin/docker-compose
 
 WORKDIR /app
+
+# Copia script di aggiornamento prima del clone
+COPY update_container.sh /app/update_container.sh
+RUN chmod +x /app/update_container.sh
 
 ARG GITHUB_REPO=your-username/ERMES
 ARG GITHUB_BRANCH=main

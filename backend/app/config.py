@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
     
+    # Webhook GitHub (opzionale, per auto-deploy)
+    github_webhook_secret: Optional[str] = None
+    github_webhook_enabled: bool = False
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

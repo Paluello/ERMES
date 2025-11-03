@@ -1,6 +1,10 @@
 """Endpoint REST API"""
-from fastapi import APIRouter, HTTPException, Depends
-from typing import List, Dict, Any
+from fastapi import APIRouter, HTTPException, Depends, Request, Header
+from typing import List, Dict, Any, Optional
+import hmac
+import hashlib
+import subprocess
+import os
 from app.sources.source_manager import SourceManager
 from app.sources.mobile_phone_source import MobilePhoneSource
 from app.config import settings
@@ -147,5 +151,89 @@ async def disconnect_mobile_source(
         raise HTTPException(
             status_code=404,
             detail=f"Sorgente {source_id} non trovata"
+        )
+
+
+@router.post("/webhook/github")
+async def github_webhook(
+    request: Request,
+    x_github_event: Optional[str] = Header(None),
+    x_hub_signature_256: Optional[str] = Header(None)
+):
+    """
+    Webhook endpoint per GitHub - aggiorna automaticamente il container quando c'è un push
+    
+    Configurazione GitHub:
+    1. Vai su Settings > Webhooks > Add webhook
+    2. Payload URL: http://tuo-nas-ip:8000/api/webhook/github
+    3. Content type: application/json
+    4. Secret: (opzionale, ma consigliato) imposta GITHUB_WEBHOOK_SECRET nel .env
+    5. Events: seleziona "Just the push event"
+    """
+    if not settings.github_webhook_enabled:
+        raise HTTPException(
+            status_code=403,
+            detail="Webhook GitHub non abilitato. Imposta GITHUB_WEBHOOK_ENABLED=true nel .env"
+        )
+    
+    # Verifica che sia un evento GitHub valido
+    if x_github_event != "push":
+        return {"message": "Ignorato - non è un evento push", "event": x_github_event}
+    
+    # Verifica signature se secret è configurato
+    if settings.github_webhook_secret:
+        if not x_hub_signature_256:
+            raise HTTPException(status_code=401, detail="Signature mancante")
+        
+        body = await request.body()
+        expected_signature = "sha256=" + hmac.new(
+            settings.github_webhook_secret.encode(),
+            body,
+            hashlib.sha256
+        ).hexdigest()
+        
+        if not hmac.compare_digest(x_hub_signature_256, expected_signature):
+            raise HTTPException(status_code=401, detail="Signature non valida")
+    
+    # Leggi payload
+    payload = await request.json()
+    
+    # Verifica che sia un push sul branch corretto (se configurato)
+    ref = payload.get("ref", "")
+    if ref and not ref.endswith("/main") and not ref.endswith("/master"):
+        return {
+            "message": "Ignorato - push su branch diverso da main/master",
+            "ref": ref
+        }
+    
+    # Esegui aggiornamento in background
+    try:
+        # Trova lo script di aggiornamento (nel container o sul host)
+        update_script = os.getenv("UPDATE_SCRIPT_PATH", "/app/update_container.sh")
+        
+        # Se lo script esiste, eseguilo
+        if os.path.exists(update_script):
+            subprocess.Popen(
+                ["/bin/bash", update_script],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+            return {
+                "success": True,
+                "message": "Aggiornamento avviato",
+                "commit": payload.get("head_commit", {}).get("id", "unknown")[:7]
+            }
+        else:
+            # Fallback: ritorna info ma non esegue aggiornamento
+            return {
+                "success": False,
+                "message": "Script di aggiornamento non trovato",
+                "expected_path": update_script,
+                "commit": payload.get("head_commit", {}).get("id", "unknown")[:7]
+            }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Errore durante avvio aggiornamento: {str(e)}"
         )
 
