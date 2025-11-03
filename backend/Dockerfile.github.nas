@@ -15,7 +15,7 @@ ARG GITHUB_BRANCH=main
 ARG GITHUB_TOKEN=
 
 RUN if [ -n "$GITHUB_TOKEN" ]; then \
-        git clone https://${GITHUB_TOKEN}@github.com/${GITHUB_REPO}.git . ; \
+        git clone https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPO}.git . 2>&1 | grep -v "github_pat_" || true ; \
     else \
         git clone https://github.com/${GITHUB_REPO}.git . ; \
     fi && \
