@@ -41,7 +41,9 @@ struct StreamControlView: View {
                 // Pulsante Start/Stop
                 Button(action: {
                     if streamManager.isStreaming {
-                        streamManager.stopStreaming()
+                        Task {
+                            await streamManager.stopStreaming()
+                        }
                     } else {
                         Task {
                             await streamManager.startStreaming()

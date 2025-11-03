@@ -13,10 +13,6 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copia script di aggiornamento prima del clone
-COPY update_container.sh /app/update_container.sh
-RUN chmod +x /app/update_container.sh
-
 ARG GITHUB_REPO=your-username/ERMES
 ARG GITHUB_BRANCH=main
 ARG GITHUB_TOKEN=
@@ -31,6 +27,10 @@ RUN if [ -n "$GITHUB_TOKEN" ]; then \
     pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir -r requirements.txt && \
     pip install opencv-python-headless
+
+# Copia script di aggiornamento dopo il clone (sarà sovrascritto dal volume mount se presente)
+COPY update_container.sh /app/update_container.sh
+RUN chmod +x /app/update_container.sh
 
 WORKDIR /app/backend
 

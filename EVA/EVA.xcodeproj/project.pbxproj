@@ -6,6 +6,14 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		29369BF32EB8ED6400C6E0A8 /* HaishinKit in Frameworks */ = {isa = PBXBuildFile; productRef = 29369BF22EB8ED6400C6E0A8 /* HaishinKit */; };
+		29369BF52EB8ED6400C6E0A8 /* MoQTHaishinKit in Frameworks */ = {isa = PBXBuildFile; productRef = 29369BF42EB8ED6400C6E0A8 /* MoQTHaishinKit */; };
+		29369BF72EB8ED6400C6E0A8 /* RTCHaishinKit in Frameworks */ = {isa = PBXBuildFile; productRef = 29369BF62EB8ED6400C6E0A8 /* RTCHaishinKit */; };
+		29369BF92EB8ED6400C6E0A8 /* RTMPHaishinKit in Frameworks */ = {isa = PBXBuildFile; productRef = 29369BF82EB8ED6400C6E0A8 /* RTMPHaishinKit */; };
+		29369BFB2EB8ED6400C6E0A8 /* SRTHaishinKit in Frameworks */ = {isa = PBXBuildFile; productRef = 29369BFA2EB8ED6400C6E0A8 /* SRTHaishinKit */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		29441DD62EB8D9000094948F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +60,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				29369BF32EB8ED6400C6E0A8 /* HaishinKit in Frameworks */,
+				29369BFB2EB8ED6400C6E0A8 /* SRTHaishinKit in Frameworks */,
+				29369BF92EB8ED6400C6E0A8 /* RTMPHaishinKit in Frameworks */,
+				29369BF72EB8ED6400C6E0A8 /* RTCHaishinKit in Frameworks */,
+				29369BF52EB8ED6400C6E0A8 /* MoQTHaishinKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +125,11 @@
 			);
 			name = EVA;
 			packageProductDependencies = (
+				29369BF22EB8ED6400C6E0A8 /* HaishinKit */,
+				29369BF42EB8ED6400C6E0A8 /* MoQTHaishinKit */,
+				29369BF62EB8ED6400C6E0A8 /* RTCHaishinKit */,
+				29369BF82EB8ED6400C6E0A8 /* RTMPHaishinKit */,
+				29369BFA2EB8ED6400C6E0A8 /* SRTHaishinKit */,
 			);
 			productName = EVA;
 			productReference = 29441DC62EB8D8FE0094948F /* EVA.app */;
@@ -402,8 +420,12 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = E59WF4ZTHH;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+			GENERATE_INFOPLIST_FILE = YES;
+			INFOPLIST_KEY_NSCameraUsageDescription = "L'app necessita accesso alla fotocamera per trasmettere video live al sistema ERMES";
+			INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "L'app necessita la posizione GPS per geolocalizzare oggetti rilevati nel video";
+			INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Posizione sempre attiva per tracking continuo degli oggetti";
+			INFOPLIST_KEY_NSMotionUsageDescription = "L'app usa sensori movimento per calcolare l'orientamento del telefono e geolocalizzare con precisione gli oggetti";
+			INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -434,8 +456,12 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = E59WF4ZTHH;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+			GENERATE_INFOPLIST_FILE = YES;
+			INFOPLIST_KEY_NSCameraUsageDescription = "L'app necessita accesso alla fotocamera per trasmettere video live al sistema ERMES";
+			INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "L'app necessita la posizione GPS per geolocalizzare oggetti rilevati nel video";
+			INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Posizione sempre attiva per tracking continuo degli oggetti";
+			INFOPLIST_KEY_NSMotionUsageDescription = "L'app usa sensori movimento per calcolare l'orientamento del telefono e geolocalizzare con precisione gli oggetti";
+			INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -592,6 +618,29 @@
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		29369BF22EB8ED6400C6E0A8 /* HaishinKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = HaishinKit;
+		};
+		29369BF42EB8ED6400C6E0A8 /* MoQTHaishinKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MoQTHaishinKit;
+		};
+		29369BF62EB8ED6400C6E0A8 /* RTCHaishinKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RTCHaishinKit;
+		};
+		29369BF82EB8ED6400C6E0A8 /* RTMPHaishinKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RTMPHaishinKit;
+		};
+		29369BFA2EB8ED6400C6E0A8 /* SRTHaishinKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SRTHaishinKit;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 29441DBE2EB8D8FE0094948F /* Project object */;
 }

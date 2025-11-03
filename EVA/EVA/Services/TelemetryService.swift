@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CoreLocation
 import Combine
 
 /// Servizio per acquisizione e invio telemetria GPS/IMU

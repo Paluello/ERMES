@@ -38,6 +38,9 @@ class StreamManager: ObservableObject {
         videoCapture.onFrameCaptured = { [weak self] sampleBuffer in
             self?.rtmpStream.appendVideoSampleBuffer(sampleBuffer)
         }
+        
+        // Configura la preview immediatamente all'avvio
+        videoCapture.setup(config: config)
     }
     
     func startStreaming() async {
@@ -88,14 +91,14 @@ class StreamManager: ObservableObject {
             )
             
             if response.success {
-                // Configura RTMP stream
-                rtmpStream.configure(url: rtmpURL, config: config)
+                // Configura RTMP stream (async)
+                try await rtmpStream.configure(url: rtmpURL, config: config)
                 
                 // Attendi breve momento per connessione RTMP
                 try await Task.sleep(nanoseconds: 500_000_000) // 0.5 secondi
                 
-                // Avvia pubblicazione stream
-                rtmpStream.start()
+                // Avvia pubblicazione stream (async)
+                try await rtmpStream.start()
                 
                 // Avvia telemetria
                 telemetryService.start(sourceId: sourceId)
@@ -106,15 +109,34 @@ class StreamManager: ObservableObject {
             }
         } catch {
             print("Errore avvio streaming: \(error)")
+            // Mostra errore più dettagliato
+            if let urlError = error as? URLError {
+                switch urlError.code {
+                case .cannotConnectToHost, .networkConnectionLost:
+                    print("⚠️ Impossibile connettersi al backend. Verifica che:")
+                    print("   1. Il backend ERMES sia in esecuzione")
+                    print("   2. L'URL backend sia corretto nelle impostazioni")
+                    print("   3. Se usi un dispositivo fisico, usa l'IP del Mac invece di 'localhost'")
+                default:
+                    print("⚠️ Errore di connessione: \(urlError.localizedDescription)")
+                }
+            } else {
+                print("⚠️ Errore: \(error.localizedDescription)")
+            }
         }
         
         isConnecting = false
     }
     
-    func stopStreaming() {
+    func stopStreaming() async {
         guard isStreaming else { return }
         
-        rtmpStream.stop()
+        do {
+            try await rtmpStream.stop()
+        } catch {
+            print("Errore stop streaming: \(error)")
+        }
+        
         videoCapture.stop()
         telemetryService.stop()
         

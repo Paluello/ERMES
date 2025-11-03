@@ -9,7 +9,7 @@ import Foundation
 import AVFoundation
 import VideoToolbox
 import Combine
-import HaishinKit
+import RTMPHaishinKit
 
 /// Servizio per streaming RTMP usando HaishinKit
 class RTMPStreamService: ObservableObject {
@@ -21,7 +21,7 @@ class RTMPStreamService: ObservableObject {
     private var rtmpConnection: RTMPConnection?
     private var streamName: String = ""
     
-    func configure(url: String, config: StreamConfig) {
+    func configure(url: String, config: StreamConfig) async throws {
         self.streamURL = url
         
         // Parse URL RTMP (formato: rtmp://host:port/app/stream_name)
@@ -52,33 +52,33 @@ class RTMPStreamService: ObservableObject {
         // oppure configurare tramite altre proprietà di RTMPStream
         // Consulta la documentazione di HaishinKit per la versione installata
         
-        // Setup delegate per monitorare stato connessione
-        rtmpConnection?.addEventListener(.rtmpStatus, selector: #selector(rtmpStatusHandler), observer: self)
+        // Connetti al server RTMP (async)
+        _ = try await rtmpConnection?.connect("\(host):\(port)/\(appName)")
         
-        // Connetti al server RTMP
-        rtmpConnection?.connect("\(host):\(port)/\(appName)")
+        // Monitora lo stato della connessione tramite delegate o property observer
+        // Nota: L'API moderna potrebbe usare un approccio diverso per gli eventi
     }
     
-    func start() {
+    func start() async throws {
         guard let rtmpStream = rtmpStream, !streamName.isEmpty else {
             print("Errore: Stream non configurato correttamente")
             return
         }
         
-        // Pubblica stream
-        rtmpStream.publish(streamName)
+        // Pubblica stream (async)
+        _ = try await rtmpStream.publish(streamName)
         
-        DispatchQueue.main.async {
+        await MainActor.run {
             self.isConnected = true
             self.connectionStatus = "Connesso"
         }
     }
     
-    func stop() {
-        rtmpStream?.close()
-        rtmpConnection?.close()
+    func stop() async throws {
+        _ = try await rtmpStream?.close()
+        _ = try await rtmpConnection?.close()
         
-        DispatchQueue.main.async {
+        await MainActor.run {
             self.isConnected = false
             self.connectionStatus = "Disconnesso"
         }
@@ -98,25 +98,12 @@ class RTMPStreamService: ObservableObject {
         // Per ora lasciamo vuoto - da implementare secondo l'API corretta
     }
     
-    @objc private func rtmpStatusHandler(_ notification: Notification) {
-        let e = Event.from(notification)
-        
-        let data = e.data as? ASObject
-        guard let code = data?["code"] as? String else { return }
-        
-        DispatchQueue.main.async {
-            switch code {
-            case RTMPConnection.Code.connectSuccess.rawValue:
-                self.connectionStatus = "Connesso"
-                self.isConnected = true
-            case RTMPConnection.Code.connectFailed.rawValue,
-                 RTMPConnection.Code.connectClosed.rawValue:
-                self.connectionStatus = "Disconnesso"
-                self.isConnected = false
-            default:
-                self.connectionStatus = code
-            }
-        }
-    }
+    // TODO: Implementare il monitoraggio dello stato della connessione
+    // L'API moderna di HaishinKit potrebbe usare:
+    // - Property observers su rtmpConnection.state
+    // - Delegate pattern
+    // - Combine publishers
+    // - O un altro meccanismo per gli eventi
+    // Consulta la documentazione di HaishinKit per la versione installata
 }
 
