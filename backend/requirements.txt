@@ -1,0 +1,22 @@
+# FastAPI e server
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+websockets>=12.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# MAVLink e comunicazione drone
+pymavlink>=2.4.40
+# dronekit>=2.9.2  # Alternativa a pymavlink
+
+# Computer Vision e AI
+ultralytics>=8.1.0  # YOLOv8
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# Tracking (opzionale, per DeepSORT)
+# deep-sort-realtime>=1.3.2
+
+# Utilities
+python-multipart>=0.0.6
+

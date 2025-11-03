@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  # Backend ERMES (FastAPI + YOLO)
+  ermes-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ermes-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ermes-models:/app/models  # Cache modelli YOLO
+    environment:
+      - GPS_PRECISION=standard
+      - YOLO_MODEL=yolov8n.pt  # Nano model per NAS meno potenti
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+    restart: unless-stopped
+    networks:
+      - ermes-network
+    # Limita risorse per NAS
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # Server RTMP (nginx-rtmp)
+  nginx-rtmp:
+    image: tiangolo/nginx-rtmp
+    container_name: ermes-rtmp
+    ports:
+      - "1935:1935"  # RTMP
+      - "8080:80"    # HTTP (per status/statistiche)
+    volumes:
+      - ./backend/nginx-rtmp.conf:/etc/nginx/nginx.conf:ro
+      - rtmp-recordings:/tmp/recordings
+    restart: unless-stopped
+    networks:
+      - ermes-network
+    depends_on:
+      - ermes-backend
+
+  # Frontend Dashboard (opzionale, può essere servito da nginx)
+  ermes-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ermes-frontend
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html:ro
+    restart: unless-stopped
+    networks:
+      - ermes-network
+    depends_on:
+      - ermes-backend
+
+volumes:
+  ermes-models:
+  rtmp-recordings:
+
+networks:
+  ermes-network:
+    driver: bridge
+

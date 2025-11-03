@@ -1,0 +1,59 @@
+# Versione ottimizzata per NAS Ugreen (architettura ARM)
+# Usa modelli YOLO più leggeri e meno risorse
+
+version: '3.8'
+
+services:
+  # Backend ERMES ottimizzato per NAS
+  ermes-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.nas
+    container_name: ermes-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ermes-models:/app/models
+    environment:
+      - GPS_PRECISION=standard
+      - YOLO_MODEL=yolov8n.pt  # Nano model (più leggero)
+      - YOLO_CONF_THRESHOLD=0.6  # Più selettivo per ridurre elaborazione
+      - MAX_TRACKED_OBJECTS=10   # Meno oggetti = meno CPU
+      - VIDEO_FPS=15  # Ridotto da 30 a 15 fps per NAS
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+    restart: unless-stopped
+    networks:
+      - ermes-network
+    # Risorse limitate per NAS
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'  # Limita CPU
+          memory: 1.5G  # Limita RAM
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # Server RTMP leggero
+  nginx-rtmp:
+    image: tiangolo/nginx-rtmp:latest
+    container_name: ermes-rtmp
+    ports:
+      - "1935:1935"
+    volumes:
+      - ./backend/nginx-rtmp.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped
+    networks:
+      - ermes-network
+    depends_on:
+      - ermes-backend
+
+volumes:
+  ermes-models:
+
+networks:
+  ermes-network:
+    driver: bridge
+

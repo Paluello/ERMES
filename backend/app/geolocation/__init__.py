@@ -1,0 +1,2 @@
+"""Modulo geolocalizzazione oggetti"""
+

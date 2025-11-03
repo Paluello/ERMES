@@ -1,0 +1,34 @@
+# Dockerfile che clona direttamente da GitHub
+FROM python:3.11-slim
+
+# Installa git e dipendenze sistema
+RUN apt-get update && apt-get install -y \
+    git \
+    ffmpeg \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Clona repository GitHub (ARG per flessibilità)
+ARG GITHUB_REPO=your-username/ERMES
+ARG GITHUB_BRANCH=main
+ARG GITHUB_TOKEN=
+
+# Clona repository
+RUN if [ -n "$GITHUB_TOKEN" ]; then \
+        git clone https://${GITHUB_TOKEN}@github.com/${GITHUB_REPO}.git . ; \
+    else \
+        git clone https://github.com/${GITHUB_REPO}.git . ; \
+    fi && \
+    git checkout ${GITHUB_BRANCH} && \
+    cd backend && \
+    pip install --no-cache-dir -r requirements.txt
+
+WORKDIR /app/backend
+
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+

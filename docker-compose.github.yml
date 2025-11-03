@@ -1,0 +1,57 @@
+# Docker Compose che usa codice da GitHub
+# Configura GITHUB_REPO nel file .env o direttamente qui
+
+version: '3.8'
+
+services:
+  # Backend ERMES da GitHub
+  ermes-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.github
+      args:
+        GITHUB_REPO: ${GITHUB_REPO:-your-username/ERMES}  # Modifica con tuo repo
+        GITHUB_BRANCH: ${GITHUB_BRANCH:-main}
+        GITHUB_TOKEN: ${GITHUB_TOKEN:-}  # Opzionale, per repo privati
+    container_name: ermes-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ermes-models:/app/backend/models  # Solo modelli YOLO (cache)
+    environment:
+      - GPS_PRECISION=standard
+      - YOLO_MODEL=yolov8n.pt
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+    restart: unless-stopped
+    networks:
+      - ermes-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+
+  # Server RTMP (usa immagine pre-built)
+  nginx-rtmp:
+    image: tiangolo/nginx-rtmp
+    container_name: ermes-rtmp
+    ports:
+      - "1935:1935"
+      - "8080:80"
+    volumes:
+      # Clona config nginx da GitHub o usa file locale
+      - ./backend/nginx-rtmp.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped
+    networks:
+      - ermes-network
+    depends_on:
+      - ermes-backend
+
+volumes:
+  ermes-models:
+
+networks:
+  ermes-network:
+    driver: bridge
+

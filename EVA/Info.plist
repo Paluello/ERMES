@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSCameraUsageDescription</key>
+	<string>L'app necessita accesso alla fotocamera per trasmettere video live al sistema ERMES</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>L'app necessita la posizione GPS per geolocalizzare oggetti rilevati nel video</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Posizione sempre attiva per tracking continuo degli oggetti</string>
+	<key>NSMotionUsageDescription</key>
+	<string>L'app usa sensori movimento per calcolare l'orientamento del telefono e geolocalizzare con precisione gli oggetti</string>
+</dict>
+</plist>
+
