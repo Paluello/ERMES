@@ -195,6 +195,9 @@
 			);
 			mainGroup = 29441DBD2EB8D8FE0094948F;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				29F46B852EB8EB55004AD350 /* XCRemoteSwiftPackageReference "HaishinKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 29441DC72EB8D8FE0094948F /* Products */;
 			projectDirPath = "";
@@ -578,6 +581,17 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		29F46B852EB8EB55004AD350 /* XCRemoteSwiftPackageReference "HaishinKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/HaishinKit/HaishinKit.swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.2.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
 	};
 	rootObject = 29441DBE2EB8D8FE0094948F /* Project object */;
 }

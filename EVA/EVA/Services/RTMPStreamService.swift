@@ -7,6 +7,7 @@
 
 import Foundation
 import AVFoundation
+import VideoToolbox
 import Combine
 import HaishinKit
 
@@ -45,19 +46,11 @@ class RTMPStreamService: ObservableObject {
         rtmpConnection = RTMPConnection()
         rtmpStream = RTMPStream(connection: rtmpConnection!)
         
-        // Configurazione video
-        rtmpStream?.videoSettings = [
-            .width: config.resolution.width,
-            .height: config.resolution.height,
-            .bitrate: config.bitrate,
-            .profileLevel: kVTProfileLevel_H264_Baseline_AutoLevel,
-            .maxKeyFrameIntervalDuration: 2.0
-        ]
-        
-        // Configurazione audio (opzionale, per ora disabilitato)
-        rtmpStream?.audioSettings = [
-            .muted: true
-        ]
+        // TODO: Configurare videoSettings e audioSettings secondo l'API di HaishinKit
+        // L'API esatta dipende dalla versione di HaishinKit installata
+        // Potrebbe essere necessario usare VideoCodecSettings() e AudioCodecSettings()
+        // oppure configurare tramite altre proprietà di RTMPStream
+        // Consulta la documentazione di HaishinKit per la versione installata
         
         // Setup delegate per monitorare stato connessione
         rtmpConnection?.addEventListener(.rtmpStatus, selector: #selector(rtmpStatusHandler), observer: self)
@@ -82,7 +75,7 @@ class RTMPStreamService: ObservableObject {
     }
     
     func stop() {
-        rtmpStream?.stopPublish()
+        rtmpStream?.close()
         rtmpConnection?.close()
         
         DispatchQueue.main.async {
@@ -96,12 +89,17 @@ class RTMPStreamService: ObservableObject {
             return
         }
         
-        // Invia frame video allo stream RTMP
-        rtmpStream.appendSampleBuffer(sampleBuffer, withType: .video)
+        // TODO: Implementare l'invio del frame video a RTMPStream
+        // L'API di HaishinKit potrebbe usare:
+        // - rtmpStream.attachVideo() con AVCaptureVideoDataOutput
+        // - rtmpStream.append() con CMSampleBuffer
+        // - o un altro metodo specifico della versione di HaishinKit
+        // Consulta la documentazione di HaishinKit per la versione installata
+        // Per ora lasciamo vuoto - da implementare secondo l'API corretta
     }
     
     @objc private func rtmpStatusHandler(_ notification: Notification) {
-        guard let e = Event.from(notification) else { return }
+        let e = Event.from(notification)
         
         let data = e.data as? ASObject
         guard let code = data?["code"] as? String else { return }

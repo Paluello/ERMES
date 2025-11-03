@@ -7,6 +7,7 @@
 
 import Foundation
 import AVFoundation
+import UIKit
 import Combine
 
 /// Manager principale per coordinare tutti i servizi di streaming
@@ -15,7 +16,7 @@ class StreamManager: ObservableObject {
     @Published var isStreaming = false
     @Published var isConnecting = false
     
-    let config = StreamConfig()
+    var config = StreamConfig()
     let videoCapture = VideoCaptureService()
     let rtmpStream = RTMPStreamService()
     let telemetryService: TelemetryService
@@ -74,6 +75,7 @@ class StreamManager: ObservableObject {
         
         // Registra sorgente sul backend
         do {
+            // Assicurati che UIKit sia importato per UIDevice
             let deviceInfo = DeviceInfo(
                 model: UIDevice.modelName,
                 osVersion: UIDevice.osVersionString
