@@ -75,10 +75,10 @@ app.add_middleware(
 # Include routers
 app.include_router(routes.router)
 
-# WebSocket endpoint
-@app.websocket("/ws")
-async def websocket_route(websocket: WebSocket):
-    await websocket_module.websocket_endpoint(websocket)
+# WebSocket endpoint - DISABILITATO TEMPORANEAMENTE
+# @app.websocket("/ws")
+# async def websocket_route(websocket: WebSocket):
+#     await websocket_module.websocket_endpoint(websocket)
 
 # Serve dashboard HTML alla root
 @app.get("/")
