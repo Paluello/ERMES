@@ -10,7 +10,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile.github
       args:
-        GITHUB_REPO: ${GITHUB_REPO:-your-username/ERMES}  # Modifica con tuo repo
+        GITHUB_REPO: ${GITHUB_REPO:-Paluello/ERMES}
         GITHUB_BRANCH: ${GITHUB_BRANCH:-main}
         GITHUB_TOKEN: ${GITHUB_TOKEN:-}  # Opzionale, per repo privati
     container_name: ermes-backend

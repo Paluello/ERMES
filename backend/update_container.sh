@@ -1,37 +1,38 @@
 #!/bin/bash
-# Script semplificato per aggiornare ERMES via webhook GitHub
+# Script per aggiornare ERMES da GitHub (usato da auto-updater con polling)
 # Usa git direttamente nel container per aggiornare solo i file modificati
 
 set -e
 
 LOG_FILE="/tmp/ermes_update.log"
-COMPOSE_FILE="docker-compose.github.nas.yml"
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.github.nas.yml}"
 
-# Trova il path corretto - prova diversi possibili path
-# Ordine di priorità basato su ciò che è realmente montato
-if [ -d "/app" ] && [ -f "/app/backend/app/main.py" ]; then
-    # Path standard montato dal docker-compose
-    COMPOSE_DIR="/app"
-elif [ -d "/volume1/docker/ERMES" ]; then
-    COMPOSE_DIR="/volume1/docker/ERMES"
-elif [ -d "/workspace" ]; then
-    COMPOSE_DIR="/workspace"
-else
-    # Prova a trovare la directory usando pwd
-    COMPOSE_DIR=$(pwd)
+# Determina directory progetto (variabile d'ambiente o auto-detect)
+PROJECT_DIR="${PROJECT_DIR:-}"
+if [ -z "$PROJECT_DIR" ]; then
+    # Auto-detect: prova diversi path comuni
+    if [ -d "/app" ] && [ -f "/app/backend/app/main.py" ]; then
+        PROJECT_DIR="/app"
+    elif [ -d "/volume1/docker/ERMES" ]; then
+        PROJECT_DIR="/volume1/docker/ERMES"
+    elif [ -d "/workspace" ]; then
+        PROJECT_DIR="/workspace"
+    else
+        PROJECT_DIR=$(pwd)
+    fi
 fi
-
-BACKEND_DIR="$COMPOSE_DIR/backend/app"
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
 }
 
-log "🚀 Webhook: Inizio aggiornamento..."
+log "🔄 Aggiornamento ERMES da GitHub..."
 
 # Verifica docker compose
 if command -v docker &> /dev/null && docker compose version &> /dev/null 2>&1; then
     DOCKER_COMPOSE_CMD="docker compose"
+elif command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker-compose"
 else
     log "❌ ERRORE: docker compose non trovato"
     exit 1
@@ -43,14 +44,11 @@ if [ ! -S /var/run/docker.sock ]; then
     exit 1
 fi
 
-# Log del path trovato
-log "📁 Directory progetto: $COMPOSE_DIR"
+log "📁 Directory progetto: $PROJECT_DIR"
 
 # Vai nella directory
-cd "$COMPOSE_DIR" || {
-    log "❌ ERRORE: Directory $COMPOSE_DIR non trovata"
-    log "Directory corrente: $(pwd)"
-    log "Contenuto root: $(ls -la / | head -20)"
+cd "$PROJECT_DIR" || {
+    log "❌ ERRORE: Directory $PROJECT_DIR non trovata"
     exit 1
 }
 
@@ -59,22 +57,16 @@ GITHUB_REPO="${GITHUB_REPO:-Paluello/ERMES}"
 GITHUB_BRANCH="${GITHUB_BRANCH:-main}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
-log "📥 Aggiorno codice da GitHub: $GITHUB_REPO (branch: $GITHUB_BRANCH)"
+log "📥 Repository: $GITHUB_REPO (branch: $GITHUB_BRANCH)"
 
-# Usa git dal container Docker (git è già installato nel Dockerfile)
-# Lo script viene eseguito nel container, quindi git è disponibile
-
-# Verifica e aggiorna il repository git
-cd "$COMPOSE_DIR" || exit 1
-
-# Configura git se necessario
-git config --global --add safe.directory "$COMPOSE_DIR" 2>/dev/null || true
+# Configura git
+git config --global --add safe.directory "$PROJECT_DIR" 2>/dev/null || true
 
 # Se la directory è già un repository git, fai pull
-if [ -d "$COMPOSE_DIR/.git" ]; then
+if [ -d "$PROJECT_DIR/.git" ]; then
     log "📦 Repository git trovata - aggiorno i file..."
     
-    # Verifica che il remote sia configurato correttamente
+    # Configura remote se necessario
     if ! git remote get-url origin > /dev/null 2>&1; then
         log "🔧 Configuro remote origin..."
         if [ -n "$GITHUB_TOKEN" ]; then
@@ -95,9 +87,9 @@ if [ -d "$COMPOSE_DIR/.git" ]; then
     log "📥 Pull da GitHub..."
     git pull origin "$GITHUB_BRANCH" >> "$LOG_FILE" 2>&1 || {
         log "⚠️ ATTENZIONE: git pull fallito, provo checkout diretto..."
-        # Fallback: checkout diretto dal branch remoto
         git checkout -f "origin/${GITHUB_BRANCH}" >> "$LOG_FILE" 2>&1 || {
-            log "❌ ERRORE: anche checkout fallito"
+            log "❌ ERRORE: checkout fallito"
+            exit 1
         }
     }
     
@@ -106,7 +98,7 @@ else
     # Non è un repository git - clona l'intera repository
     log "📦 Directory non è un repository git - clono da GitHub..."
     
-    # Salva file esistenti importanti (docker-compose, .env, etc)
+    # Salva file esistenti importanti
     mkdir -p /tmp/ermes_backup
     cp -f docker-compose*.yml .env* /tmp/ermes_backup/ 2>/dev/null || true
     
@@ -129,19 +121,19 @@ else
         }
     fi
     
-    # Copia tutti i file nella directory corrente (eccetto .git se esiste)
+    # Copia file nella directory corrente
     log "📋 Copio file nella directory montata..."
-    rsync -av --exclude='.git' /tmp/ermes_clone/ "$COMPOSE_DIR/" >> "$LOG_FILE" 2>&1 || {
+    rsync -av --exclude='.git' /tmp/ermes_clone/ "$PROJECT_DIR/" >> "$LOG_FILE" 2>&1 || {
         log "⚠️ rsync non disponibile, uso cp..."
-        cp -r /tmp/ermes_clone/* "$COMPOSE_DIR/" 2>/dev/null || true
-        cp -r /tmp/ermes_clone/.* "$COMPOSE_DIR/" 2>/dev/null || true
+        cp -r /tmp/ermes_clone/* "$PROJECT_DIR/" 2>/dev/null || true
+        cp -r /tmp/ermes_clone/.* "$PROJECT_DIR/" 2>/dev/null || true
     }
     
     # Ripristina file esistenti
-    cp -f /tmp/ermes_backup/* "$COMPOSE_DIR/" 2>/dev/null || true
+    cp -f /tmp/ermes_backup/* "$PROJECT_DIR/" 2>/dev/null || true
     
     # Inizializza git nella directory finale
-    cd "$COMPOSE_DIR" || exit 1
+    cd "$PROJECT_DIR" || exit 1
     git init >> "$LOG_FILE" 2>&1
     if [ -n "$GITHUB_TOKEN" ]; then
         git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPO}.git" 2>/dev/null || \
@@ -160,13 +152,12 @@ else
 fi
 
 # Verifica che i file siano presenti
-if [ ! -f "$COMPOSE_DIR/backend/app/main.py" ]; then
-    log "❌ ERRORE: File main.py non trovato in $COMPOSE_DIR/backend/app/"
-    log "Contenuto directory: $(ls -la $COMPOSE_DIR/backend/app/ 2>&1 | head -10)"
+if [ ! -f "$PROJECT_DIR/backend/app/main.py" ]; then
+    log "❌ ERRORE: File main.py non trovato in $PROJECT_DIR/backend/app/"
     exit 1
 fi
 
-log "✅ Verifica: File main.py trovato in $COMPOSE_DIR/backend/app/"
+log "✅ Verifica: File main.py trovato"
 
 # Riavvia backend
 log "🔄 Riavvio backend..."
@@ -175,4 +166,4 @@ $DOCKER_COMPOSE_CMD -f "$COMPOSE_FILE" restart ermes-backend >> "$LOG_FILE" 2>&1
     exit 1
 }
 
-log "✅ Aggiornamento completato! (veloce, ~5 secondi, solo file modificati)"
+log "✅ Aggiornamento completato! (~5 secondi)"

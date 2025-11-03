@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-ARG GITHUB_REPO=your-username/ERMES
+ARG GITHUB_REPO=Paluello/ERMES
 ARG GITHUB_BRANCH=main
 ARG GITHUB_TOKEN=
 

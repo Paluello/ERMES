@@ -7,7 +7,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile.github.nas
       args:
-        GITHUB_REPO: ${GITHUB_REPO:-your-username/ERMES}
+        GITHUB_REPO: ${GITHUB_REPO:-Paluello/ERMES}
         GITHUB_BRANCH: ${GITHUB_BRANCH:-main}
         GITHUB_TOKEN: ${GITHUB_TOKEN:-}
     container_name: ermes-backend
@@ -17,13 +17,17 @@ services:
       - ermes-models:/app/backend/models
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./backend/update_container.sh:/app/update_container.sh:ro
-      - .:/volume1/docker/ERMES:rw  # Monta la directory (read-write per git pull)
+      - .:/workspace:rw  # Monta la directory corrente (read-write per git pull)
       - ./backend/app:/app/backend/app:ro  # Monta il codice Python per hot-reload (solo restart necessario)
     environment:
       - UPDATE_SCRIPT_PATH=/app/update_container.sh
+      - PROJECT_DIR=/workspace
+      - COMPOSE_FILE=docker-compose.github.nas.yml
       - GITHUB_REPO=${GITHUB_REPO:-Paluello/ERMES}
       - GITHUB_BRANCH=${GITHUB_BRANCH:-main}
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - GITHUB_AUTO_UPDATE_ENABLED=${GITHUB_AUTO_UPDATE_ENABLED:-true}
+      - GITHUB_AUTO_UPDATE_INTERVAL_MINUTES=${GITHUB_AUTO_UPDATE_INTERVAL_MINUTES:-5}
       - GPS_PRECISION=standard
       - YOLO_MODEL=yolov8n.pt
       - YOLO_CONF_THRESHOLD=0.6
