@@ -21,6 +21,7 @@ RUN if [ -n "$GITHUB_TOKEN" ]; then \
     fi && \
     git checkout ${GITHUB_BRANCH} && \
     cd backend && \
+    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir -r requirements.txt && \
     pip install opencv-python-headless
 
