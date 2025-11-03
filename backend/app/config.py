@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     yolo_conf_threshold: float = 0.5
     yolo_iou_threshold: float = 0.45
     
+    # Face Detection
+    enable_face_detection: bool = True
+    face_detection_model_path: Optional[str] = None  # None = usa Haar Cascade (fallback)
+    face_conf_threshold: float = 0.5
+    
     # Camera Calibration (default, override con calibrazione specifica)
     camera_fov_horizontal: float = 84.0  # gradi
     camera_fov_vertical: float = 53.0  # gradi

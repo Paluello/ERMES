@@ -5,6 +5,7 @@ from typing import Optional, Callable, Generator
 from threading import Thread, Lock
 import queue
 from app.vision.yolo_detector import YOLODetector
+from app.vision.face_detector import FaceDetector
 from app.vision.tracker import ObjectTracker
 from app.config import settings
 
@@ -26,6 +27,22 @@ class VideoProcessor:
         self.on_detection_callback = on_detection_callback
         self.detector = YOLODetector()
         self.tracker = ObjectTracker()
+        
+        # Face detector (opzionale, se abilitato nelle configurazioni)
+        self.face_detector = None
+        if settings.enable_face_detection:
+            try:
+                self.face_detector = FaceDetector(
+                    model_path=settings.face_detection_model_path,
+                    conf_threshold=settings.face_conf_threshold
+                )
+                if not self.face_detector.is_available():
+                    print(f"Warning: Face detector non disponibile per sorgente {source_id}")
+                    self.face_detector = None
+            except Exception as e:
+                print(f"Warning: Errore inizializzazione face detector: {e}")
+                self.face_detector = None
+        
         self.cap: Optional[cv2.VideoCapture] = None
         self.rtmp_receiver = None  # Per RTMPStreamReceiver
         self.is_processing = False
@@ -98,6 +115,12 @@ class VideoProcessor:
             
             # Detection con YOLO
             detections = self.detector.detect(frame)
+            
+            # Face detection (se abilitato)
+            if self.face_detector is not None:
+                face_detections = self.face_detector.detect(frame)
+                # Aggiungi detection volti alle detection YOLO
+                detections.extend(face_detections)
             
             # Tracking
             tracked_detections = self.tracker.update(detections)

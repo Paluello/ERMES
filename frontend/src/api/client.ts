@@ -69,9 +69,10 @@ export class WebSocketClient {
             this.ws.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
+                    console.log('Messaggio WebSocket ricevuto:', data);
                     this.handleMessage(data);
                 } catch (e) {
-                    console.error('Errore parsing messaggio WebSocket:', e);
+                    console.error('Errore parsing messaggio WebSocket:', e, event.data);
                 }
             };
 
@@ -112,10 +113,19 @@ export class WebSocketClient {
     }
 
     private handleMessage(data: any): void {
+        console.log('Gestione messaggio WebSocket:', data.type);
+        
         if (data.type === 'detection' && this.onDetectionCallback) {
+            console.log('Chiamata callback detection con payload:', data.payload);
             this.onDetectionCallback(data.payload);
         } else if (data.type === 'telemetry' && this.onTelemetryCallback) {
+            console.log('Chiamata callback telemetry con payload:', data.payload);
             this.onTelemetryCallback(data.payload);
+        } else if (data.type === 'pong') {
+            // Messaggio keepalive, ignoriamo
+            console.log('WebSocket keepalive ricevuto');
+        } else {
+            console.warn('Tipo messaggio WebSocket sconosciuto o callback non impostato:', data.type);
         }
     }
 

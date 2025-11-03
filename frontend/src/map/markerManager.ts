@@ -7,6 +7,7 @@ export class MarkerManager {
     private markers: Map<number, L.Marker> = new Map();
     private markerColors: Map<string, string> = new Map([
         ['person', '#ef4444'],
+        ['face', '#ec4899'],  // Rosa per volti rilevati
         ['car', '#fbbf24'],
         ['truck', '#3b82f6'],
         ['bus', '#6366f1'],
