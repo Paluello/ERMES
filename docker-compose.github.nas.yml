@@ -17,7 +17,8 @@ services:
       - ermes-models:/app/backend/models
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./backend/update_container.sh:/app/update_container.sh:ro
-      - .:/volume1/docker/ERMES:ro  # Monta la directory per permettere al container di eseguire docker compose
+      - .:/volume1/docker/ERMES:rw  # Monta la directory (read-write per git pull)
+      - ./backend/app:/app/backend/app:ro  # Monta il codice Python per hot-reload (solo restart necessario)
     environment:
       - UPDATE_SCRIPT_PATH=/app/update_container.sh
       - GPS_PRECISION=standard
